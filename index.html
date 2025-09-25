@@ -6,12 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     :root {
-      --bg: #f0f0f0;
-      --card: rgba(255, 255, 255, 0.8);
-      --text: #222;
-      --accent: #007aff;
-    }
-    [data-theme="dark"] {
       --bg: #1c1c1c;
       --card: rgba(40, 40, 40, 0.8);
       --text: #eee;
@@ -33,7 +27,7 @@
       align-items: center;
       background: var(--card);
       backdrop-filter: blur(10px);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
 
     header h1 {
@@ -54,8 +48,13 @@
       text-align: center;
     }
 
-    input[type="file"] {
+    input[type="file"], input[type="text"] {
       margin-bottom: 1rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: none;
+      width: 80%;
+      max-width: 300px;
     }
 
     button {
@@ -70,7 +69,7 @@
     }
 
     button:disabled {
-      background-color: #ccc;
+      background-color: #555;
       cursor: not-allowed;
     }
 
@@ -91,7 +90,7 @@
     .photo-card {
       background: var(--card);
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       padding: 1rem;
       max-width: 220px;
       animation: fadeIn 0.4s ease;
@@ -158,14 +157,22 @@
 <body>
   <header>
     <h1>📷 Photo Bridge Pro</h1>
-    <button id="themeToggle">🌙</button>
+    <button id="themeToggle">☀️</button>
   </header>
 
   <main>
-    <input type="file" id="fileInput" multiple />
-    <button onclick="sendFiles()" disabled>전송하기</button>
-    <div id="status">🔗 연결 상태: 대기 중...</div>
-    <div id="gallery"></div>
+    <div id="roomUI">
+      <h2>Room ID를 입력하세요</h2>
+      <input type="text" id="roomInput" placeholder="예: test1234" />
+      <button onclick="joinRoom()">입장하기</button>
+    </div>
+
+    <div id="appUI" style="display:none;">
+      <input type="file" id="fileInput" multiple />
+      <button onclick="sendFiles()" disabled>전송하기</button>
+      <div id="status">🔗 연결 상태: 대기 중...</div>
+      <div id="gallery"></div>
+    </div>
   </main>
 
   <div id="previewModal" onclick="hidePreview()" style="display:none;">
@@ -179,62 +186,67 @@
     const socket = io();
     const peer = new RTCPeerConnection();
     let channel;
-    let roomId = prompt("같은 방 ID를 입력하세요 (예: test1234)");
 
-    socket.emit('join', roomId);
+    function joinRoom() {
+      const roomId = document.getElementById('roomInput').value.trim();
+      if (!roomId) return alert("Room ID를 입력해주세요!");
+      document.getElementById('roomUI').style.display = 'none';
+      document.getElementById('appUI').style.display = 'block';
+      socket.emit('join', roomId);
+      setupWebRTC(roomId);
+    }
 
-    channel = peer.createDataChannel('file');
-    channel.onopen = () => {
-      document.querySelector("button").disabled = false;
-      updateStatus("🔗 연결됨 (P2P)");
-    };
-
-    peer.ondatachannel = event => {
-      const receiveChannel = event.channel;
-      let receivedChunks = [];
-      receiveChannel.onmessage = e => {
-        receivedChunks.push(e.data);
-        if (e.data.byteLength < 16384) {
-          const blob = new Blob(receivedChunks);
-          const url = URL.createObjectURL(blob);
-          showImageCard(url);
-          receivedChunks = [];
-          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-            alert("사진을 길게 눌러 저장하거나, 다운로드 버튼을 눌러 저장하세요 📱");
-          }
-          if (window.navigator.vibrate) navigator.vibrate(200);
-        }
+    function setupWebRTC(roomId) {
+      channel = peer.createDataChannel('file');
+      channel.onopen = () => {
+        document.querySelector("button[onclick='sendFiles()']").disabled = false;
+        updateStatus("🔗 연결됨 (P2P)");
       };
-    };
 
-    peer.onicecandidate = e => {
-      if (e.candidate) socket.emit('candidate', { roomId, candidate: e.candidate });
-    };
+      peer.ondatachannel = event => {
+        const receiveChannel = event.channel;
+        let receivedChunks = [];
+        receiveChannel.onmessage = e => {
+          receivedChunks.push(e.data);
+          if (e.data.byteLength < 16384) {
+            const blob = new Blob(receivedChunks);
+            const url = URL.createObjectURL(blob);
+            showImageCard(url);
+            receivedChunks = [];
+            if (window.navigator.vibrate) navigator.vibrate(200);
+          }
+        };
+      };
 
-    peer.onconnectionstatechange = () => {
-      updateStatus(`🔗 연결 상태: ${peer.connectionState}`);
-    };
+      peer.onicecandidate = e => {
+        if (e.candidate) socket.emit('candidate', { roomId, candidate: e.candidate });
+      };
 
-    socket.on('ready', async () => {
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-      socket.emit('offer', { roomId, offer });
-    });
+      peer.onconnectionstatechange = () => {
+        updateStatus(`🔗 연결 상태: ${peer.connectionState}`);
+      };
 
-    socket.on('offer', async offer => {
-      await peer.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      socket.emit('answer', { roomId, answer });
-    });
+      socket.on('ready', async () => {
+        const offer = await peer.createOffer();
+        await peer.setLocalDescription(offer);
+        socket.emit('offer', { roomId, offer });
+      });
 
-    socket.on('answer', async answer => {
-      await peer.setRemoteDescription(new RTCSessionDescription(answer));
-    });
+      socket.on('offer', async offer => {
+        await peer.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        socket.emit('answer', { roomId, answer });
+      });
 
-    socket.on('candidate', candidate => {
-      peer.addIceCandidate(new RTCIceCandidate(candidate));
-    });
+      socket.on('answer', async answer => {
+        await peer.setRemoteDescription(new RTCSessionDescription(answer));
+      });
+
+      socket.on('candidate', candidate => {
+        peer.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+    }
 
     function updateStatus(text) {
       document.getElementById('status').innerText = text;
@@ -252,17 +264,4 @@
           const chunk = arrayBuffer.slice(offset, offset + chunkSize);
           channel.send(chunk);
           offset += chunkSize;
-          const percent = Math.floor((offset / arrayBuffer.byteLength) * 100);
-          card.querySelector('.progress-bar').style.width = percent + '%';
-          await new Promise(r => setTimeout(r, 10));
-        }
-
-        channel.send(new Uint8Array(0));
-        card.querySelector('.progress-bar').style.width = '100%';
-      }
-    }
-
-    function createSendingCard(filename) {
-      const card = document.createElement('div');
-      card.className = 'photo-card';
-      card.innerHTML = `<p style
+          const percent = Math.floor((
