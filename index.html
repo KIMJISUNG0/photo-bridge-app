@@ -3,16 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <title>Photo Bridge</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 2rem; }
-    #gallery img { max-width: 200px; margin: 10px; border: 1px solid #ccc; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: #f9f9f9;
+      color: #222;
+      text-align: center;
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    input[type="file"] {
+      margin-bottom: 1rem;
+    }
+
+    button {
+      background-color: #007aff;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    #gallery {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .photo-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 1rem;
+      max-width: 220px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .photo-card img {
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .photo-card .actions {
+      margin-top: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #previewModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    #previewModal img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 12px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
   <h1>📷 Photo Bridge</h1>
   <input type="file" id="fileInput" />
   <button onclick="sendFile()" disabled>전송하기</button>
+
   <div id="gallery"></div>
+
+  <div id="previewModal" onclick="hidePreview()" style="display:none;">
+    <img id="previewImage" />
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -23,14 +112,11 @@
 
     socket.emit('join', roomId);
 
-    // 송신자
     channel = peer.createDataChannel('file');
     channel.onopen = () => {
-      console.log("📡 연결됨");
       document.querySelector("button").disabled = false;
     };
 
-    // 수신자
     peer.ondatachannel = event => {
       const receiveChannel = event.channel;
       let receivedChunks = [];
@@ -39,10 +125,12 @@
         if (e.data.byteLength < 16384) {
           const blob = new Blob(receivedChunks);
           const url = URL.createObjectURL(blob);
-          const img = document.createElement('img');
-          img.src = url;
-          document.getElementById('gallery').appendChild(img);
+          showImageCard(url);
           receivedChunks = [];
+
+          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            alert("사진을 길게 눌러 저장하거나, 다운로드 버튼을 눌러 저장하세요 📱");
+          }
         }
       };
     };
@@ -84,7 +172,49 @@
         offset += chunkSize;
         await new Promise(r => setTimeout(r, 10));
       }
-      channel.send(new Uint8Array(0)); // 전송 완료 표시
+      channel.send(new Uint8Array(0));
+    }
+
+    function showImageCard(url) {
+      const card = document.createElement('div');
+      card.className = 'photo-card';
+
+      const img = document.createElement('img');
+      img.src = url;
+      img.onclick = () => showPreview(url);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.innerText = '다운로드';
+      downloadBtn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'received-photo.jpg';
+        a.click();
+      };
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.innerText = '삭제';
+      deleteBtn.onclick = () => card.remove();
+
+      actions.appendChild(downloadBtn);
+      actions.appendChild(deleteBtn);
+      card.appendChild(img);
+      card.appendChild(actions);
+      document.getElementById('gallery').appendChild(card);
+    }
+
+    function showPreview(url) {
+      const modal = document.getElementById('previewModal');
+      const img = document.getElementById('previewImage');
+      img.src = url;
+      modal.style.display = 'flex';
+    }
+
+    function hidePreview() {
+      document.getElementById('previewModal').style.display = 'none';
     }
   </script>
 </body>
