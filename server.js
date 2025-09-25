@@ -13,13 +13,13 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 방(Room) 기반 시그널링
+// 방 기반 시그널링
 io.on('connection', socket => {
   console.log('새 클라이언트 접속');
 
   socket.on('join', roomId => {
     socket.join(roomId);
-    console.log(`클라이언트가 방 ${roomId}에 참여`);
+    console.log(`방 ${roomId}에 참여`);
     socket.to(roomId).emit('ready');
   });
 
@@ -36,7 +36,6 @@ io.on('connection', socket => {
   });
 });
 
-// Render/Railway 환경에서 PORT 사용
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: ${PORT}`);
