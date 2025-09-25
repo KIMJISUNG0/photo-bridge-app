@@ -1,1 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Photo Bridge LAN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    body { font-family: sans-serif; background:#1c1c1c; color:#eee; text-align:center; }
+    #deviceList, #gallery { margin-top:20px; }
+    .device-card { background:#333; padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h1>📡 Photo Bridge LAN</h1>
+  <div id="deviceList">기기 검색 중...</div>
+  <input type="file" id="fileInput" multiple style="margin-top:20px;" />
+  <button onclick="sendFiles()">전송하기</button>
+  <div id="gallery"></div>
 
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const myName = "Device-" + Math.floor(Math.random()*1000);
+    socket.emit('announce', myName);
+
+    socket.on('deviceList', list => {
+      const container = document.getElementById('deviceList');
+      container.innerHTML = '';
+      list.forEach(d => {
+        if (d.name !== myName) {
+          const card = document.createElement('div');
+          card.className = 'device-card';
+          card.innerText = d.name;
+          card.onclick = () => socket.emit('request', { from: myName, to: d.name });
+          container.appendChild(card);
+        }
+      });
+    });
+
+    function sendFiles() {
+      alert("파일 전송 기능은 여기서 WebRTC 연결 후 구현됩니다!");
+    }
+  </script>
+
+  <!-- Service Worker 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js');
+    }
+  </script>
+</body>
+</html>
