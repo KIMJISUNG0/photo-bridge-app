@@ -1,77 +1,91 @@
-<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-<script>
-  const socket = io();
-  const peer = new RTCPeerConnection();
-  let channel;
-  let roomId = prompt("같은 방 ID를 입력하세요 (예: test123)");
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Photo Bridge</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; }
+    #gallery img { max-width: 200px; margin: 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>📷 Photo Bridge</h1>
+  <input type="file" id="fileInput" />
+  <button onclick="sendFile()" disabled>전송하기</button>
+  <div id="gallery"></div>
 
-  // 방 참여
-  socket.emit('join', roomId);
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const peer = new RTCPeerConnection();
+    let channel;
+    let roomId = prompt("같은 방 ID를 입력하세요 (예: test1234)");
 
-  // 데이터 채널 생성 (송신자)
-  channel = peer.createDataChannel('file');
-  channel.onopen = () => {
-    console.log("📡 DataChannel 연결됨");
-    document.querySelector("button").disabled = false; // 연결 후 전송 버튼 활성화
-  };
+    socket.emit('join', roomId);
 
-  // 수신자
-  peer.ondatachannel = event => {
-    const receiveChannel = event.channel;
-    let receivedChunks = [];
-    receiveChannel.onmessage = e => {
-      receivedChunks.push(e.data);
-      if (e.data.byteLength < 16384) {
-        const blob = new Blob(receivedChunks);
-        const url = URL.createObjectURL(blob);
-        const img = document.createElement('img');
-        img.src = url;
-        document.getElementById('gallery').appendChild(img);
-        receivedChunks = [];
-      }
+    // 송신자
+    channel = peer.createDataChannel('file');
+    channel.onopen = () => {
+      console.log("📡 연결됨");
+      document.querySelector("button").disabled = false;
     };
-  };
 
-  // ICE 후보 처리
-  peer.onicecandidate = e => {
-    if (e.candidate) socket.emit('candidate', { roomId, candidate: e.candidate });
-  };
+    // 수신자
+    peer.ondatachannel = event => {
+      const receiveChannel = event.channel;
+      let receivedChunks = [];
+      receiveChannel.onmessage = e => {
+        receivedChunks.push(e.data);
+        if (e.data.byteLength < 16384) {
+          const blob = new Blob(receivedChunks);
+          const url = URL.createObjectURL(blob);
+          const img = document.createElement('img');
+          img.src = url;
+          document.getElementById('gallery').appendChild(img);
+          receivedChunks = [];
+        }
+      };
+    };
 
-  // 시그널링 처리
-  socket.on('ready', async () => {
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    socket.emit('offer', { roomId, offer });
-  });
+    peer.onicecandidate = e => {
+      if (e.candidate) socket.emit('candidate', { roomId, candidate: e.candidate });
+    };
 
-  socket.on('offer', async offer => {
-    await peer.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
-    socket.emit('answer', { roomId, answer });
-  });
+    socket.on('ready', async () => {
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      socket.emit('offer', { roomId, offer });
+    });
 
-  socket.on('answer', async answer => {
-    await peer.setRemoteDescription(new RTCSessionDescription(answer));
-  });
+    socket.on('offer', async offer => {
+      await peer.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      socket.emit('answer', { roomId, answer });
+    });
 
-  socket.on('candidate', candidate => {
-    peer.addIceCandidate(new RTCIceCandidate(candidate));
-  });
+    socket.on('answer', async answer => {
+      await peer.setRemoteDescription(new RTCSessionDescription(answer));
+    });
 
-  // 파일 전송
-  async function sendFile() {
-    const file = document.getElementById('fileInput').files[0];
-    if (!file) return alert("파일을 선택하세요!");
-    const arrayBuffer = await file.arrayBuffer();
-    const chunkSize = 16384;
-    let offset = 0;
-    while (offset < arrayBuffer.byteLength) {
-      const chunk = arrayBuffer.slice(offset, offset + chunkSize);
-      channel.send(chunk);
-      offset += chunkSize;
-      await new Promise(r => setTimeout(r, 10));
+    socket.on('candidate', candidate => {
+      peer.addIceCandidate(new RTCIceCandidate(candidate));
+    });
+
+    async function sendFile() {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert("파일을 선택하세요!");
+      const arrayBuffer = await file.arrayBuffer();
+      const chunkSize = 16384;
+      let offset = 0;
+      while (offset < arrayBuffer.byteLength) {
+        const chunk = arrayBuffer.slice(offset, offset + chunkSize);
+        channel.send(chunk);
+        offset += chunkSize;
+        await new Promise(r => setTimeout(r, 10));
+      }
+      channel.send(new Uint8Array(0)); // 전송 완료 표시
     }
-    channel.send(new Uint8Array(0)); // 전송 완료 표시
-  }
-</script>
+  </script>
+</body>
+</html>
