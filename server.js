@@ -7,6 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+// 정적 파일 서빙
 app.use(express.static(path.join(__dirname)));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -19,7 +20,7 @@ io.on('connection', socket => {
   socket.on('join', roomId => {
     socket.join(roomId);
     console.log(`클라이언트가 방 ${roomId}에 참여`);
-    socket.to(roomId).emit('ready'); // 다른 참가자에게 알림
+    socket.to(roomId).emit('ready');
   });
 
   socket.on('offer', ({ roomId, offer }) => {
@@ -35,6 +36,7 @@ io.on('connection', socket => {
   });
 });
 
+// Render/Railway 환경에서 PORT 사용
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: ${PORT}`);
