@@ -1,7 +1,7 @@
 {
   "name": "photo-bridge-app",
   "version": "1.0.0",
-  "description": "사진을 서로 전송하는 웹앱",
+  "description": "사진 전송 웹앱",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
