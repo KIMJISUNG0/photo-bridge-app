@@ -5,19 +5,53 @@
   <title>Photo Bridge Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      margin: 0;
-      padding: 2rem;
-      background-color: #f9f9f9;
-      color: #222;
-      text-align: center;
+    :root {
+      --bg: #f0f0f0;
+      --card: rgba(255, 255, 255, 0.8);
+      --text: #222;
+      --accent: #007aff;
+    }
+    [data-theme="dark"] {
+      --bg: #1c1c1c;
+      --card: rgba(40, 40, 40, 0.8);
+      --text: #eee;
+      --accent: #0a84ff;
     }
 
-    h1 {
-      font-weight: 600;
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    header {
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+
+    #themeToggle {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--accent);
+    }
+
+    main {
+      padding: 2rem;
+      text-align: center;
     }
 
     input[type="file"] {
@@ -25,7 +59,7 @@
     }
 
     button {
-      background-color: #007aff;
+      background-color: var(--accent);
       color: white;
       border: none;
       padding: 0.6rem 1.2rem;
@@ -40,6 +74,12 @@
       cursor: not-allowed;
     }
 
+    #status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
     #gallery {
       display: flex;
       flex-wrap: wrap;
@@ -49,13 +89,14 @@
     }
 
     .photo-card {
-      background: white;
+      background: var(--card);
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 1rem;
       max-width: 220px;
       animation: fadeIn 0.4s ease;
       position: relative;
+      backdrop-filter: blur(10px);
     }
 
     .photo-card img {
@@ -75,7 +116,7 @@
       bottom: 0;
       left: 0;
       height: 4px;
-      background-color: #007aff;
+      background-color: var(--accent);
       transition: width 0.2s ease;
     }
 
@@ -96,27 +137,42 @@
       border-radius: 12px;
     }
 
-    #status {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      color: #555;
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.8rem;
+      color: #888;
     }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
     }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.2rem; }
+      .photo-card { max-width: 90%; }
+    }
   </style>
 </head>
 <body>
-  <h1>📷 Photo Bridge Pro</h1>
-  <input type="file" id="fileInput" multiple />
-  <button onclick="sendFiles()" disabled>전송하기</button>
-  <div id="status">🔗 연결 상태: 대기 중...</div>
-  <div id="gallery"></div>
+  <header>
+    <h1>📷 Photo Bridge Pro</h1>
+    <button id="themeToggle">🌙</button>
+  </header>
+
+  <main>
+    <input type="file" id="fileInput" multiple />
+    <button onclick="sendFiles()" disabled>전송하기</button>
+    <div id="status">🔗 연결 상태: 대기 중...</div>
+    <div id="gallery"></div>
+  </main>
+
   <div id="previewModal" onclick="hidePreview()" style="display:none;">
     <img id="previewImage" />
   </div>
+
+  <footer>© 2025 Photo Bridge. All rights reserved.</footer>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -209,50 +265,4 @@
     function createSendingCard(filename) {
       const card = document.createElement('div');
       card.className = 'photo-card';
-      card.innerHTML = `<p style="margin-bottom:0.5rem;">📤 ${filename}</p>`;
-      const progress = document.createElement('div');
-      progress.className = 'progress-bar';
-      progress.style.width = '0%';
-      card.appendChild(progress);
-      document.getElementById('gallery').appendChild(card);
-      return card;
-    }
-
-    function showImageCard(url) {
-      const card = document.createElement('div');
-      card.className = 'photo-card';
-
-      const img = document.createElement('img');
-      img.src = url;
-      img.onclick = () => showPreview(url);
-
-      const actions = document.createElement('div');
-      actions.className = 'actions';
-
-      const downloadBtn = document.createElement('button');
-      downloadBtn.innerText = '다운로드';
-      downloadBtn.onclick = () => {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'received-photo.jpg';
-        a.click();
-      };
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.innerText = '삭제';
-      deleteBtn.onclick = () => card.remove();
-
-      actions.appendChild(downloadBtn);
-      actions.appendChild(deleteBtn);
-      card.appendChild(img);
-      card.appendChild(actions);
-      document.getElementById('gallery').appendChild(card);
-    }
-
-    function showPreview(url) {
-      const modal = document.getElementById('previewModal');
-      const img = document.getElementById('previewImage');
-      img.src = url;
-      modal.style.display = 'flex';
-    }
-
+      card.innerHTML = `<p style
