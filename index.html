@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Photo Bridge LAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="/manifest.json" />
   <style>
     :root {
       --bg: #1c1c1c;
@@ -48,6 +49,10 @@
       font-size: 1rem;
       cursor: pointer;
       margin: 0.5rem;
+    }
+
+    input[type="file"] {
+      margin-top: 1rem;
     }
 
     #deviceList {
@@ -108,6 +113,10 @@
       margin-top: 1rem;
       font-size: 0.9rem;
     }
+
+    @media (max-width: 600px) {
+      .photo-card { max-width: 90%; }
+    }
   </style>
 </head>
 <body>
@@ -135,6 +144,7 @@
     const peer = new RTCPeerConnection();
     let channel;
     const myName = navigator.platform + '-' + Math.floor(Math.random() * 10000);
+    let transferHistory = [];
 
     socket.emit('announce', myName);
 
@@ -169,6 +179,8 @@
 
     function setupWebRTC(roomId) {
       channel = peer.createDataChannel('file');
+      channel.binaryType = 'arraybuffer';
+
       channel.onopen = () => {
         document.querySelector("button[onclick='sendFiles()']").disabled = false;
         updateStatus("🔗 연결됨 (P2P)");
@@ -183,6 +195,8 @@
             const blob = new Blob(receivedChunks);
             const url = URL.createObjectURL(blob);
             showImageCard(url);
+            transferHistory.push(url);
+            localStorage.setItem('transferHistory', JSON.stringify(transferHistory));
             receivedChunks = [];
             if (window.navigator.vibrate) navigator.vibrate(200);
           }
@@ -257,4 +271,6 @@
       const card = document.createElement('div');
       card.className = 'photo-card';
 
-      const img
+      const img = document.createElement('img');
+      img.src = url;
+      img.onclick = () =>
