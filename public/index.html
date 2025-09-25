@@ -4,27 +4,28 @@
   <meta charset="UTF-8">
   <title>Photo Bridge LAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="manifest" href="/manifest.json">
   <style>
-    body { font-family: sans-serif; background:#1c1c1c; color:#eee; text-align:center; }
-    #deviceList, #gallery { margin-top:20px; }
+    body { background:#1c1c1c; color:#eee; font-family:sans-serif; text-align:center; }
     .device-card { background:#333; padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
   </style>
 </head>
 <body>
   <h1>📡 Photo Bridge LAN</h1>
   <div id="deviceList">기기 검색 중...</div>
-  <input type="file" id="fileInput" multiple style="margin-top:20px;" />
+  <input type="file" id="fileInput" multiple />
   <button onclick="sendFiles()">전송하기</button>
   <div id="gallery"></div>
 
-  <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const myName = "Device-" + Math.floor(Math.random()*1000);
+    const myName = "Device-" + Math.floor(Math.random()*1000) + "-" + Date.now();
     socket.emit('announce', myName);
 
+    let currentRoom = null;
+    let peer, channel;
+
+    // 기기 목록 표시
     socket.on('deviceList', list => {
       const container = document.getElementById('deviceList');
       container.innerHTML = '';
@@ -33,21 +34,94 @@
           const card = document.createElement('div');
           card.className = 'device-card';
           card.innerText = d.name;
-          card.onclick = () => socket.emit('request', { from: myName, to: d.name });
+          card.onclick = () => {
+            console.log("➡️ Sending request to", d.name);
+            socket.emit('request', { from: myName, to: d.name });
+          };
           container.appendChild(card);
         }
       });
     });
 
-    function sendFiles() {
-      alert("파일 전송 기능은 여기서 WebRTC 연결 후 구현됩니다!");
-    }
-  </script>
+    // 연결 요청 받음
+    socket.on('request', ({ from }) => {
+      if (confirm(`${from} 기기에서 연결 요청이 왔습니다. 수락할까요?`)) {
+        socket.emit('accept', { from: myName, to: from });
+      }
+    });
 
-  <!-- Service Worker 등록 -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js');
+    // 페어링
+    socket.on('pair', roomId => {
+      console.log("✅ Paired in room:", roomId);
+      currentRoom = roomId;
+      socket.emit('join', roomId);
+      startWebRTC();
+    });
+
+    // WebRTC 초기화
+    function startWebRTC() {
+      peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      channel = peer.createDataChannel("fileChannel");
+      channel.binaryType = "arraybuffer";
+
+      channel.onopen = () => console.log("📡 DataChannel opened");
+      channel.onmessage = e => receiveFile(e.data);
+
+      peer.onicecandidate = e => {
+        if (e.candidate) socket.emit('candidate', { roomId: currentRoom, candidate: e.candidate });
+      };
+
+      peer.createOffer().then(offer => {
+        peer.setLocalDescription(offer);
+        socket.emit('offer', { roomId: currentRoom, offer });
+      });
+    }
+
+    socket.on('offer', offer => {
+      peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      peer.ondatachannel = e => {
+        channel = e.channel;
+        channel.binaryType = "arraybuffer";
+        channel.onmessage = ev => receiveFile(ev.data);
+      };
+      peer.onicecandidate = e => {
+        if (e.candidate) socket.emit('candidate', { roomId: currentRoom, candidate: e.candidate });
+      };
+      peer.setRemoteDescription(new RTCSessionDescription(offer));
+      peer.createAnswer().then(answer => {
+        peer.setLocalDescription(answer);
+        socket.emit('answer', { roomId: currentRoom, answer });
+      });
+    });
+
+    socket.on('answer', answer => {
+      peer.setRemoteDescription(new RTCSessionDescription(answer));
+    });
+
+    socket.on('candidate', candidate => {
+      peer.addIceCandidate(new RTCIceCandidate(candidate));
+    });
+
+    // 파일 전송
+    function sendFiles() {
+      const files = document.getElementById('fileInput').files;
+      if (!files.length || !channel) return;
+      const file = files[0];
+      file.arrayBuffer().then(buf => {
+        channel.send(buf);
+        console.log("📤 Sent file:", file.name);
+      });
+    }
+
+    // 파일 수신
+    function receiveFile(data) {
+      const blob = new Blob([data]);
+      const url = URL.createObjectURL(blob);
+      const img = document.createElement('img');
+      img.src = url;
+      img.style.maxWidth = "200px";
+      document.getElementById('gallery').appendChild(img);
+      console.log("📥 Received file");
     }
   </script>
 </body>
