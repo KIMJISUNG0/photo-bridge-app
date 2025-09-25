@@ -1,25 +1,40 @@
 const express = require('express');
 const http = require('http');
-const socketIO = require('socket.io');
-const path = require('path');
+const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+const io = new Server(server);
 
-// 정적 파일 서빙
-app.use(express.static(path.join(__dirname)));
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.use(express.static('public'));
 
-// 방 기반 시그널링
+let devices = [];
+
 io.on('connection', socket => {
-  console.log('새 클라이언트 접속');
+  socket.on('announce', name => {
+    devices.push({ name, id: socket.id });
+    io.emit('deviceList', devices);
+  });
+
+  socket.on('request', ({ from, to }) => {
+    const target = devices.find(d => d.name === to);
+    if (target) {
+      io.to(target.id).emit('request', { from });
+    }
+  });
+
+  socket.on('accept', ({ from, to }) => {
+    const roomId = from + '-' + to;
+    const fromDevice = devices.find(d => d.name === from);
+    const toDevice = devices.find(d => d.name === to);
+    if (fromDevice && toDevice) {
+      io.to(fromDevice.id).emit('pair', roomId);
+      io.to(toDevice.id).emit('pair', roomId);
+    }
+  });
 
   socket.on('join', roomId => {
     socket.join(roomId);
-    console.log(`방 ${roomId}에 참여`);
     socket.to(roomId).emit('ready');
   });
 
@@ -34,9 +49,13 @@ io.on('connection', socket => {
   socket.on('candidate', ({ roomId, candidate }) => {
     socket.to(roomId).emit('candidate', candidate);
   });
+
+  socket.on('disconnect', () => {
+    devices = devices.filter(d => d.id !== socket.id);
+    io.emit('deviceList', devices);
+  });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 서버 실행 중: ${PORT}`);
+server.listen(3000, () => {
+  console.log('✅ Server running at http://localhost:3000');
 });
