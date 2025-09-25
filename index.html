@@ -39,15 +39,6 @@
       text-align: center;
     }
 
-    input[type="text"], input[type="file"] {
-      margin-bottom: 1rem;
-      padding: 0.5rem;
-      border-radius: 8px;
-      border: none;
-      width: 80%;
-      max-width: 300px;
-    }
-
     button {
       background-color: var(--accent);
       color: white;
@@ -125,15 +116,9 @@
   </header>
 
   <main>
-    <div id="introUI">
-      <h2>기기 이름을 입력하세요</h2>
-      <input type="text" id="deviceName" placeholder="예: JISUNG-iPhone" />
-      <button onclick="announce()">시작하기</button>
-    </div>
-
-    <div id="connectUI" style="display:none;">
+    <div id="connectUI">
       <h2>사용 가능한 기기</h2>
-      <div id="deviceList"></div>
+      <div id="deviceList">🔄 검색 중...</div>
     </div>
 
     <div id="transferUI" style="display:none;">
@@ -149,16 +134,9 @@
     const socket = io();
     const peer = new RTCPeerConnection();
     let channel;
-    let myName = "";
-    let connected = false;
+    const myName = navigator.platform + '-' + Math.floor(Math.random() * 10000);
 
-    function announce() {
-      myName = document.getElementById('deviceName').value.trim();
-      if (!myName) return alert("기기 이름을 입력해주세요!");
-      socket.emit('announce', myName);
-      document.getElementById('introUI').style.display = 'none';
-      document.getElementById('connectUI').style.display = 'block';
-    }
+    socket.emit('announce', myName);
 
     socket.on('deviceList', list => {
       const container = document.getElementById('deviceList');
@@ -233,4 +211,50 @@
       });
 
       socket.on('answer', async answer => {
-        await peer.setRemoteDescription(new
+        await peer.setRemoteDescription(new RTCSessionDescription(answer));
+      });
+
+      socket.on('candidate', candidate => {
+        peer.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+    }
+
+    async function sendFiles() {
+      const files = document.getElementById('fileInput').files;
+      for (let file of files) {
+        const card = createSendingCard(file.name);
+        const arrayBuffer = await file.arrayBuffer();
+        const chunkSize = 16384;
+        let offset = 0;
+
+        while (offset < arrayBuffer.byteLength) {
+          const chunk = arrayBuffer.slice(offset, offset + chunkSize);
+          channel.send(chunk);
+          offset += chunkSize;
+          const percent = Math.floor((offset / arrayBuffer.byteLength) * 100);
+          card.querySelector('.progress-bar').style.width = percent + '%';
+          await new Promise(r => setTimeout(r, 10));
+        }
+
+        channel.send(new Uint8Array(0));
+        card.querySelector('.progress-bar').style.width = '100%';
+      }
+    }
+
+    function createSendingCard(filename) {
+      const card = document.createElement('div');
+      card.className = 'photo-card';
+      card.innerHTML = `<p style="margin-bottom:0.5rem;">📤 ${filename}</p>`;
+      const progress = document.createElement('div');
+      progress.className = 'progress-bar';
+      progress.style.width = '0%';
+      card.appendChild(progress);
+      document.getElementById('gallery').appendChild(card);
+      return card;
+    }
+
+    function showImageCard(url) {
+      const card = document.createElement('div');
+      card.className = 'photo-card';
+
+      const img
