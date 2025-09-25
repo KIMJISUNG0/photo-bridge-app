@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>Photo Bridge</title>
+  <title>Photo Bridge Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -96,6 +96,12 @@
       border-radius: 12px;
     }
 
+    #status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
@@ -103,12 +109,11 @@
   </style>
 </head>
 <body>
-  <h1>📷 Photo Bridge</h1>
+  <h1>📷 Photo Bridge Pro</h1>
   <input type="file" id="fileInput" multiple />
   <button onclick="sendFiles()" disabled>전송하기</button>
-
+  <div id="status">🔗 연결 상태: 대기 중...</div>
   <div id="gallery"></div>
-
   <div id="previewModal" onclick="hidePreview()" style="display:none;">
     <img id="previewImage" />
   </div>
@@ -125,6 +130,7 @@
     channel = peer.createDataChannel('file');
     channel.onopen = () => {
       document.querySelector("button").disabled = false;
+      updateStatus("🔗 연결됨 (P2P)");
     };
 
     peer.ondatachannel = event => {
@@ -137,16 +143,20 @@
           const url = URL.createObjectURL(blob);
           showImageCard(url);
           receivedChunks = [];
-
           if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
             alert("사진을 길게 눌러 저장하거나, 다운로드 버튼을 눌러 저장하세요 📱");
           }
+          if (window.navigator.vibrate) navigator.vibrate(200);
         }
       };
     };
 
     peer.onicecandidate = e => {
       if (e.candidate) socket.emit('candidate', { roomId, candidate: e.candidate });
+    };
+
+    peer.onconnectionstatechange = () => {
+      updateStatus(`🔗 연결 상태: ${peer.connectionState}`);
     };
 
     socket.on('ready', async () => {
@@ -170,6 +180,10 @@
       peer.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
+    function updateStatus(text) {
+      document.getElementById('status').innerText = text;
+    }
+
     async function sendFiles() {
       const files = document.getElementById('fileInput').files;
       for (let file of files) {
@@ -182,10 +196,8 @@
           const chunk = arrayBuffer.slice(offset, offset + chunkSize);
           channel.send(chunk);
           offset += chunkSize;
-
           const percent = Math.floor((offset / arrayBuffer.byteLength) * 100);
           card.querySelector('.progress-bar').style.width = percent + '%';
-
           await new Promise(r => setTimeout(r, 10));
         }
 
@@ -244,9 +256,3 @@
       modal.style.display = 'flex';
     }
 
-    function hidePreview() {
-      document.getElementById('previewModal').style.display = 'none';
-    }
-  </script>
-</body>
-</html>
