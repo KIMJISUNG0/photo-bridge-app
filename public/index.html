@@ -7,6 +7,7 @@
   <style>
     body { background:#1c1c1c; color:#eee; font-family:sans-serif; text-align:center; }
     .device-card { background:#333; padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
+    img { max-width:200px; margin:5px; }
   </style>
 </head>
 <body>
@@ -23,7 +24,7 @@
     socket.emit('announce', myName);
 
     let currentRoom = null;
-    let peer, channel;
+    let peer, channel, role;
 
     // 기기 목록 표시
     socket.on('deviceList', list => {
@@ -34,10 +35,7 @@
           const card = document.createElement('div');
           card.className = 'device-card';
           card.innerText = d.name;
-          card.onclick = () => {
-            console.log("➡️ Sending request to", d.name);
-            socket.emit('request', { from: myName, to: d.name });
-          };
+          card.onclick = () => socket.emit('request', { from: myName, to: d.name });
           container.appendChild(card);
         }
       });
@@ -51,61 +49,71 @@
     });
 
     // 페어링
-    socket.on('pair', roomId => {
-      console.log("✅ Paired in room:", roomId);
+    socket.on('pair', ({ roomId, role: r }) => {
       currentRoom = roomId;
+      role = r;
       socket.emit('join', roomId);
-      startWebRTC();
+      initPeer();
+      if (role === 'offerer') makeOffer();
     });
 
-    // WebRTC 초기화
-    function startWebRTC() {
-      peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-      channel = peer.createDataChannel("fileChannel");
-      channel.binaryType = "arraybuffer";
-
-      channel.onopen = () => console.log("📡 DataChannel opened");
-      channel.onmessage = e => receiveFile(e.data);
+    function initPeer() {
+      peer = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        sdpSemantics: "unified-plan"
+      });
 
       peer.onicecandidate = e => {
         if (e.candidate) socket.emit('candidate', { roomId: currentRoom, candidate: e.candidate });
       };
 
-      peer.createOffer().then(offer => {
-        peer.setLocalDescription(offer);
-        socket.emit('offer', { roomId: currentRoom, offer });
-      });
+      if (role === 'offerer') {
+        channel = peer.createDataChannel("fileChannel");
+        setupChannel(channel);
+      } else {
+        peer.ondatachannel = e => setupChannel(e.channel);
+      }
     }
 
-    socket.on('offer', offer => {
-      peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-      peer.ondatachannel = e => {
-        channel = e.channel;
-        channel.binaryType = "arraybuffer";
-        channel.onmessage = ev => receiveFile(ev.data);
-      };
-      peer.onicecandidate = e => {
-        if (e.candidate) socket.emit('candidate', { roomId: currentRoom, candidate: e.candidate });
-      };
-      peer.setRemoteDescription(new RTCSessionDescription(offer));
-      peer.createAnswer().then(answer => {
-        peer.setLocalDescription(answer);
-        socket.emit('answer', { roomId: currentRoom, answer });
-      });
+    function setupChannel(ch) {
+      channel = ch;
+      channel.binaryType = "arraybuffer";
+      channel.onopen = () => console.log("📡 DataChannel opened");
+      channel.onmessage = e => receiveFile(e.data);
+    }
+
+    async function makeOffer() {
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      socket.emit('offer', { roomId: currentRoom, offer });
+    }
+
+    socket.on('offer', async offer => {
+      await peer.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      socket.emit('answer', { roomId: currentRoom, answer });
     });
 
-    socket.on('answer', answer => {
-      peer.setRemoteDescription(new RTCSessionDescription(answer));
+    socket.on('answer', async answer => {
+      await peer.setRemoteDescription(new RTCSessionDescription(answer));
     });
 
-    socket.on('candidate', candidate => {
-      peer.addIceCandidate(new RTCIceCandidate(candidate));
+    socket.on('candidate', async candidate => {
+      try {
+        await peer.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.warn("ICE candidate error", err);
+      }
     });
 
     // 파일 전송
     function sendFiles() {
       const files = document.getElementById('fileInput').files;
-      if (!files.length || !channel) return;
+      if (!files.length || !channel || channel.readyState !== "open") {
+        alert("연결이 아직 준비되지 않았습니다.");
+        return;
+      }
       const file = files[0];
       file.arrayBuffer().then(buf => {
         channel.send(buf);
@@ -119,7 +127,6 @@
       const url = URL.createObjectURL(blob);
       const img = document.createElement('img');
       img.src = url;
-      img.style.maxWidth = "200px";
       document.getElementById('gallery').appendChild(img);
       console.log("📥 Received file");
     }
