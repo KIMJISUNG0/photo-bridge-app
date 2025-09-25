@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>Photo Bridge Pro</title>
+  <title>Photo Bridge LAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     :root {
@@ -17,7 +17,6 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      transition: background 0.3s, color 0.3s;
     }
 
     header {
@@ -35,20 +34,12 @@
       margin: 0;
     }
 
-    #themeToggle {
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      cursor: pointer;
-      color: var(--accent);
-    }
-
     main {
       padding: 2rem;
       text-align: center;
     }
 
-    input[type="file"], input[type="text"] {
+    input[type="text"], input[type="file"] {
       margin-bottom: 1rem;
       padding: 0.5rem;
       border-radius: 8px;
@@ -68,15 +59,20 @@
       margin: 0.5rem;
     }
 
-    button:disabled {
-      background-color: #555;
-      cursor: not-allowed;
+    #deviceList {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
     }
 
-    #status {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      color: var(--text);
+    .device-card {
+      background: var(--card);
+      padding: 1rem;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
     #gallery {
@@ -93,9 +89,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       padding: 1rem;
       max-width: 220px;
-      animation: fadeIn 0.4s ease;
       position: relative;
-      backdrop-filter: blur(10px);
     }
 
     .photo-card img {
@@ -119,55 +113,30 @@
       transition: width 0.2s ease;
     }
 
-    #previewModal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      justify-content: center;
-      align-items: center;
-      z-index: 999;
-    }
-
-    #previewModal img {
-      max-width: 90%;
-      max-height: 90%;
-      border-radius: 12px;
-    }
-
-    footer {
-      text-align: center;
-      padding: 1rem;
-      font-size: 0.8rem;
-      color: #888;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    @media (max-width: 600px) {
-      header h1 { font-size: 1.2rem; }
-      .photo-card { max-width: 90%; }
+    #status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>📷 Photo Bridge Pro</h1>
-    <button id="themeToggle">☀️</button>
+    <h1>📡 Photo Bridge LAN</h1>
   </header>
 
   <main>
-    <div id="roomUI">
-      <h2>Room ID를 입력하세요</h2>
-      <input type="text" id="roomInput" placeholder="예: test1234" />
-      <button onclick="joinRoom()">입장하기</button>
+    <div id="introUI">
+      <h2>기기 이름을 입력하세요</h2>
+      <input type="text" id="deviceName" placeholder="예: JISUNG-iPhone" />
+      <button onclick="announce()">시작하기</button>
     </div>
 
-    <div id="appUI" style="display:none;">
+    <div id="connectUI" style="display:none;">
+      <h2>사용 가능한 기기</h2>
+      <div id="deviceList"></div>
+    </div>
+
+    <div id="transferUI" style="display:none;">
       <input type="file" id="fileInput" multiple />
       <button onclick="sendFiles()" disabled>전송하기</button>
       <div id="status">🔗 연결 상태: 대기 중...</div>
@@ -175,26 +144,50 @@
     </div>
   </main>
 
-  <div id="previewModal" onclick="hidePreview()" style="display:none;">
-    <img id="previewImage" />
-  </div>
-
-  <footer>© 2025 Photo Bridge. All rights reserved.</footer>
-
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     const peer = new RTCPeerConnection();
     let channel;
+    let myName = "";
+    let connected = false;
 
-    function joinRoom() {
-      const roomId = document.getElementById('roomInput').value.trim();
-      if (!roomId) return alert("Room ID를 입력해주세요!");
-      document.getElementById('roomUI').style.display = 'none';
-      document.getElementById('appUI').style.display = 'block';
+    function announce() {
+      myName = document.getElementById('deviceName').value.trim();
+      if (!myName) return alert("기기 이름을 입력해주세요!");
+      socket.emit('announce', myName);
+      document.getElementById('introUI').style.display = 'none';
+      document.getElementById('connectUI').style.display = 'block';
+    }
+
+    socket.on('deviceList', list => {
+      const container = document.getElementById('deviceList');
+      container.innerHTML = '';
+      list.forEach(device => {
+        if (device.name !== myName) {
+          const card = document.createElement('div');
+          card.className = 'device-card';
+          card.innerText = device.name;
+          card.onclick = () => {
+            socket.emit('request', { from: myName, to: device.name });
+          };
+          container.appendChild(card);
+        }
+      });
+    });
+
+    socket.on('request', data => {
+      if (confirm(`${data.from} 님이 연결을 요청했습니다. 수락하시겠습니까?`)) {
+        socket.emit('accept', { from: myName, to: data.from });
+      }
+    });
+
+    socket.on('pair', roomId => {
       socket.emit('join', roomId);
       setupWebRTC(roomId);
-    }
+      document.getElementById('connectUI').style.display = 'none';
+      document.getElementById('transferUI').style.display = 'block';
+    });
 
     function setupWebRTC(roomId) {
       channel = peer.createDataChannel('file');
@@ -240,28 +233,4 @@
       });
 
       socket.on('answer', async answer => {
-        await peer.setRemoteDescription(new RTCSessionDescription(answer));
-      });
-
-      socket.on('candidate', candidate => {
-        peer.addIceCandidate(new RTCIceCandidate(candidate));
-      });
-    }
-
-    function updateStatus(text) {
-      document.getElementById('status').innerText = text;
-    }
-
-    async function sendFiles() {
-      const files = document.getElementById('fileInput').files;
-      for (let file of files) {
-        const card = createSendingCard(file.name);
-        const arrayBuffer = await file.arrayBuffer();
-        const chunkSize = 16384;
-        let offset = 0;
-
-        while (offset < arrayBuffer.byteLength) {
-          const chunk = arrayBuffer.slice(offset, offset + chunkSize);
-          channel.send(chunk);
-          offset += chunkSize;
-          const percent = Math.floor((
+        await peer.setRemoteDescription(new
