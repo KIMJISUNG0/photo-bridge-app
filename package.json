@@ -1,6 +1,13 @@
 {
+  "name": "photo-bridge-app",
+  "version": "1.0.0",
+  "description": "사진을 서로 전송하는 웹앱",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
   }
 }
