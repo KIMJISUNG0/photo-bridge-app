@@ -55,6 +55,7 @@
       padding: 1rem;
       max-width: 220px;
       animation: fadeIn 0.4s ease;
+      position: relative;
     }
 
     .photo-card img {
@@ -67,6 +68,15 @@
       margin-top: 0.5rem;
       display: flex;
       justify-content: space-between;
+    }
+
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background-color: #007aff;
+      transition: width 0.2s ease;
     }
 
     #previewModal {
@@ -94,8 +104,8 @@
 </head>
 <body>
   <h1>📷 Photo Bridge</h1>
-  <input type="file" id="fileInput" />
-  <button onclick="sendFile()" disabled>전송하기</button>
+  <input type="file" id="fileInput" multiple />
+  <button onclick="sendFiles()" disabled>전송하기</button>
 
   <div id="gallery"></div>
 
@@ -160,19 +170,40 @@
       peer.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
-    async function sendFile() {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) return alert("파일을 선택하세요!");
-      const arrayBuffer = await file.arrayBuffer();
-      const chunkSize = 16384;
-      let offset = 0;
-      while (offset < arrayBuffer.byteLength) {
-        const chunk = arrayBuffer.slice(offset, offset + chunkSize);
-        channel.send(chunk);
-        offset += chunkSize;
-        await new Promise(r => setTimeout(r, 10));
+    async function sendFiles() {
+      const files = document.getElementById('fileInput').files;
+      for (let file of files) {
+        const card = createSendingCard(file.name);
+        const arrayBuffer = await file.arrayBuffer();
+        const chunkSize = 16384;
+        let offset = 0;
+
+        while (offset < arrayBuffer.byteLength) {
+          const chunk = arrayBuffer.slice(offset, offset + chunkSize);
+          channel.send(chunk);
+          offset += chunkSize;
+
+          const percent = Math.floor((offset / arrayBuffer.byteLength) * 100);
+          card.querySelector('.progress-bar').style.width = percent + '%';
+
+          await new Promise(r => setTimeout(r, 10));
+        }
+
+        channel.send(new Uint8Array(0));
+        card.querySelector('.progress-bar').style.width = '100%';
       }
-      channel.send(new Uint8Array(0));
+    }
+
+    function createSendingCard(filename) {
+      const card = document.createElement('div');
+      card.className = 'photo-card';
+      card.innerHTML = `<p style="margin-bottom:0.5rem;">📤 ${filename}</p>`;
+      const progress = document.createElement('div');
+      progress.className = 'progress-bar';
+      progress.style.width = '0%';
+      card.appendChild(progress);
+      document.getElementById('gallery').appendChild(card);
+      return card;
     }
 
     function showImageCard(url) {
