@@ -6,27 +6,97 @@
   <title data-i18n-title>Photo Bridge LAN — LAN-only mode</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Uncial+Antiqua&display=swap" rel="stylesheet">
   <style>
-    :root{ --bg:#071612; --panel:#123624; --accent:#9edc7a; --text:#eaf5e8 }
+    /* ====== Classic Zelda-inspired Inventory UI (green+gold, rune borders, triforce glow) ====== */
+    :root{
+      --bg-deep:#0b0f0a; --bg-forest:#0f2a1b; --bg-emerald:#103520;
+      --gold:#e6c36a; --gold-soft:#f1dda3; --ink:#0a100b; --text:#eef6ec; --muted:#9eb7a6;
+      --panel1:#0f2618; --panel2:#0b1d14; --edge:#3b5a3e;
+      --accent:#a8e07a; --accent2:#79d4a0; --danger:#f09983;
+      --slot:#11241a; --slotEdge:#37543e; --rar-common:#9eb7a6; --rar-rare:#6ac5ff; --rar-epic:#c28bff; --rar-legend:#f1c56a;
+    }
     *{box-sizing:border-box}
-    body{ margin:0; font-family:'Uncial Antiqua', serif; background:linear-gradient(180deg,#071612,#05120f); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; }
-    header{ padding:18px; font-family:'Cinzel',serif; font-size:1.6rem; color:var(--accent) }
-    .bar{ width:min(1100px,95%); display:flex; gap:8px; align-items:center; justify-content:space-between}
-    .panel{ width:min(1100px,95%); background:linear-gradient(145deg,#0e3b25,#0a2e1b); border:2px solid var(--accent); border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.6) }
-    .device-card{ display:block; padding:8px 12px; margin:6px 0; background:transparent; border:1px solid rgba(255,255,255,0.08); color:var(--text); border-radius:6px; cursor:pointer; text-align:left }
-    .device-card:hover{ filter:brightness(1.05) }
-    #gallery img{ max-width:200px; border:3px solid var(--accent); border-radius:6px; margin:8px }
-    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
-    .hint{ opacity:.85; font-size:.92rem }
-    progress{ width:160px; height:12px; }
-    .pill{ padding:8px 10px; border-radius:8px; background:linear-gradient(145deg,#114b32,#0b3a26); border:1px solid var(--accent); color:var(--text); cursor:pointer }
-    #log{ font-family:monospace; font-size:12px; max-height:140px; overflow:auto; background:rgba(0,0,0,0.2); padding:8px; border-radius:6px }
+    body{
+      margin:0; font-family:'Uncial Antiqua', serif; color:var(--text);
+      background:
+        radial-gradient(1400px 900px at 50% -10%, var(--bg-forest) 0%, var(--bg-emerald) 45%, var(--bg-deep) 100%),
+        #0a0f0c;
+      min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; overflow-x:hidden;
+    }
+    /* subtle rune grid */
+    .runes{position:fixed; inset:0; pointer-events:none; opacity:.06; filter:saturate(1.2)}
+    .runes svg{width:100%; height:100%}
+
+    header{ width:100%; padding:18px; font-family:'Cinzel',serif; color:var(--gold);
+      display:flex; align-items:center; justify-content:center; gap:14px; letter-spacing:.5px; position:relative }
+    .crest{ width:42px; height:42px; filter:drop-shadow(0 4px 12px rgba(230,195,106,.45)) }
+    .title{ font-size:1.7rem; text-shadow:0 2px 10px rgba(0,0,0,.45) }
+    .triforce{ position:absolute; top:14px; right:24px; width:42px; height:42px; opacity:.85; animation:glow 3.6s ease-in-out infinite }
+    @keyframes glow{ 0%{filter:drop-shadow(0 0 0 rgba(230,195,106,.0))} 50%{filter:drop-shadow(0 0 14px rgba(230,195,106,.65))} 100%{filter:drop-shadow(0 0 0 rgba(230,195,106,.0))} }
+
+    .bar{ width:min(1200px,96%); display:flex; gap:10px; align-items:center; justify-content:space-between }
+    .panel{ width:min(1200px,96%); background:linear-gradient(160deg,var(--panel1),var(--panel2));
+      border:2px solid var(--gold); border-radius:14px; padding:14px; box-shadow:0 10px 24px rgba(0,0,0,.45);
+      position:relative; overflow:hidden }
+    .panel:before{ content:""; position:absolute; inset:2px; border-radius:10px; border:1px solid rgba(230,195,106,.25); pointer-events:none }
+
+    .pill{ padding:9px 14px; border-radius:999px; background:linear-gradient(145deg,#173b26,#0f2a1b);
+      border:1px solid var(--gold); color:var(--text); cursor:pointer; display:inline-flex; align-items:center; gap:8px }
+    .ghost{ padding:9px 14px; border-radius:10px; background:transparent; border:1px dashed rgba(230,195,106,.35); color:var(--text); opacity:.9; cursor:pointer; display:inline-flex; align-items:center; gap:8px }
+    .pill:hover,.ghost:hover{ filter:brightness(1.06) }
+
+    .device-card{ display:flex; align-items:center; gap:12px; padding:10px 12px; margin:6px 0;
+      background:rgba(255,255,255,0.03); border:1px solid rgba(230,195,106,.22);
+      color:var(--text); border-radius:12px; cursor:pointer; text-align:left; transition:transform .15s, filter .2s }
+    .device-card:hover{ filter:brightness(1.08); transform:translateY(-1px) }
+    .badge{ font-size:.82rem; padding:2px 8px; border:1px solid var(--gold); border-radius:999px; opacity:.9; background:rgba(230,195,106,.12) }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+    .hint{ opacity:.88; font-size:.95rem }
+
+    /* ===== Inventory HUD ===== */
+    .hud{ width:min(1200px,96%); display:grid; grid-template-columns: 1fr 460px; gap:12px }
+    @media (max-width:1100px){ .hud{ grid-template-columns:1fr } }
+
+    /* queue as inventory list */
+    #queue{ display:flex; flex-direction:column; gap:10px }
+    .qitem{ display:grid; grid-template-columns:64px 1fr auto; gap:12px; align-items:center;
+      background:linear-gradient(145deg,rgba(255,255,255,.03),rgba(255,255,255,.01)); border:1px solid rgba(230,195,106,.16);
+      border-radius:12px; padding:10px 12px }
+    .thumb{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#112519; border:1px solid rgba(230,195,106,.18) }
+    .name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.98 }
+    .sub{ font-size:.9rem; color:var(--muted) }
+    .actions{ display:flex; gap:6px }
+    progress{ width:100%; height:10px; accent-color:var(--gold) }
+
+    /* right: Inventory Grid */
+    .inv{ background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)); border:1px solid rgba(230,195,106,.22); border-radius:12px; padding:12px }
+    .inv-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px }
+    .inv-grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(96px,1fr)); gap:10px; min-height:220px }
+    .slot{ position:relative; height:96px; background:var(--slot); border:2px solid var(--slotEdge); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; transition:filter .15s, transform .1s }
+    .slot:hover{ filter:brightness(1.08) }
+    .slot img{ width:100%; height:100%; object-fit:cover; image-rendering:-webkit-optimize-contrast }
+    .slot .rar{ position:absolute; inset:0; pointer-events:none; border-radius:8px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.05) }
+    .rar.common{ box-shadow: inset 0 0 0 2px var(--rar-common) }
+    .rar.rare{ box-shadow: inset 0 0 0 2px var(--rar-rare), 0 0 16px rgba(106,197,255,.25) }
+    .rar.epic{ box-shadow: inset 0 0 0 2px var(--rar-epic), 0 0 16px rgba(194,139,255,.25) }
+    .rar.legend{ box-shadow: inset 0 0 0 2px var(--rar-legend), 0 0 16px rgba(241,197,106,.35) }
+    .slot .cap{ position:absolute; left:0; right:0; bottom:0; background:linear-gradient(transparent,rgba(0,0,0,.65)); padding:4px 6px; font-size:.8rem; text-align:center }
+
+    /* debug */
+    #log{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; max-height:160px; overflow:auto; background:rgba(0,0,0,0.24); padding:8px; border-radius:6px }
+
+    .ico{ font-size:1.05rem }
+
+    /* Particle canvas above bg */
+    #fx{ position:fixed; inset:0; pointer-events:none; z-index:0 }
+    main{ position:relative; z-index:1; width:100% }
   </style>
   <!-- i18n helper -->
   <script>
   (function(){
     const dict={
-      ko:{title:"Photo Bridge LAN — LAN 전용 모드 (같은 Wi‑Fi/핫스팟 필요)",status_init:"초기화 대기…",refresh:"새로고침",leave:"나가기",near_title:"근처 기기",searching:"검색 중…",transfer_title:"파일 전송",choose_file:"파일 선택",send:"전송",clear:"대기열 비우기",bench:"속도테스트(5MB)",received_title:"받은 파일 / 미리보기",debug_title:"디버그 로그",no_peers:"주변 탐험가 없음",req_confirm:"에서 연결 요청",dc_open:"데이터채널 열림",dc_close:"데이터채널 닫힘",resume:"이어받기"},
-      en:{title:"Photo Bridge LAN — LAN-only mode (same Wi‑Fi / hotspot required)",status_init:"Initializing…",refresh:"Refresh",leave:"Leave",near_title:"Nearby devices",searching:"Searching…",transfer_title:"Transfer",choose_file:"Choose file",send:"Send",clear:"Clear queue",bench:"Speed test (5MB)",received_title:"Received / Preview",debug_title:"Debug log",no_peers:"No nearby peers",req_confirm:"requests to connect",dc_open:"DataChannel opened",dc_close:"DataChannel closed",resume:"Resume"}
+      ko:{title:"Photo Bridge LAN — LAN 전용 모드 (같은 Wi‑Fi/핫스팟 필요)",status_init:"초기화 대기…",refresh:"새로고침",leave:"나가기",near_title:"근처 기기",searching:"검색 중…",transfer_title:"파일 전송",choose_file:"파일 선택",send:"전송",clear:"대기열 비우기",bench:"속도테스트(5MB)",received_title:"받은 파일 / 미리보기",debug_title:"디버그 로그",no_peers:"주변 탐험가 없음",req_confirm:"에서 연결 요청",dc_open:"데이터채널 열림",dc_close:"데이터채널 닫힘",resume:"이어받기",pause:"일시정지",resume_btn:"재개",cancel:"취소",eta:"예상 남은 시간",speed:"전송 속도",inventory:"인벤토리",filter_all:"전체",filter_img:"이미지",filter_doc:"문서"},
+      en:{title:"Photo Bridge LAN — LAN-only mode (same Wi‑Fi / hotspot required)",status_init:"Initializing…",refresh:"Refresh",leave:"Leave",near_title:"Nearby devices",searching:"Searching…",transfer_title:"Transfer",choose_file:"Choose file",send:"Send",clear:"Clear queue",bench:"Speed test (5MB)",received_title:"Received / Preview",debug_title:"Debug log",no_peers:"No nearby peers",req_confirm:"requests to connect",dc_open:"DataChannel opened",dc_close:"DataChannel closed",resume:"Resume",pause:"Pause",resume_btn:"Resume",cancel:"Cancel",eta:"ETA",speed:"Speed",inventory:"Inventory",filter_all:"All",filter_img:"Images",filter_doc:"Docs"}
     };
     function pick(){const url=new URL(location.href);const qs=url.searchParams.get('lang');if(qs)return qs;const s=localStorage.getItem('pb_lang');if(s)return s;const nav=(navigator.languages&&navigator.languages[0])||navigator.language||'en';const base=nav.toLowerCase().split('-')[0];return dict[base]?base:'en'}
     function apply(){const lang=pick(),d=dict[lang]||dict.en;document.documentElement.lang=lang;document.title=d.title;document.querySelectorAll('[data-i18n-title]')?.forEach(el=>el.textContent=d.title);document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(d[k]) el.textContent=d[k]});}
@@ -35,45 +105,74 @@
   </script>
 </head>
 <body>
-  <header data-i18n-title>Photo Bridge LAN — LAN-only mode</header>
+  <!-- Particle canvas -->
+  <canvas id="fx"></canvas>
+  <!-- subtle rune pattern background -->
+  <div class="runes" aria-hidden="true">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <pattern id="tri" width="12" height="12" patternUnits="userSpaceOnUse">
+          <path d="M6 1 L11 10 L1 10 Z" fill="#e6c36a" opacity="0.18" />
+        </pattern>
+      </defs>
+      <rect x="0" y="0" width="100" height="100" fill="url(#tri)"></rect>
+    </svg>
+  </div>
 
+  <header>
+    <svg class="crest" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M32 6l10 18h-8l6 10-8 4-8-4 6-10h-8z"/></svg>
+    <span class="title" data-i18n-title>Photo Bridge LAN — LAN-only mode</span>
+    <svg class="triforce" viewBox="0 0 64 64" aria-hidden="true"><g fill="#e6c36a"><path d="M32 6l-12 20h24z"/><path d="M20 28l-12 20h24z"/><path d="M44 28l-12 20h24z"/></g></svg>
+  </header>
+
+  <main>
   <div class="bar">
     <div class="hint" id="status" data-i18n="status_init">초기화 대기…</div>
     <div class="row">
-      <button id="refreshBtn" class="pill" data-i18n="refresh">새로고침</button>
-      <button id="leaveBtn" class="pill" disabled data-i18n="leave">나가기</button>
+      <button id="refreshBtn" class="pill"><span class="ico">🧭</span><span data-i18n="refresh">새로고침</span></button>
+      <button id="leaveBtn" class="ghost" disabled><span class="ico">🏁</span><span data-i18n="leave">나가기</span></button>
     </div>
   </div>
 
   <div class="panel">
-    <h3 data-i18n="near_title">근처 기기</h3>
-    <div id="deviceList" data-i18n="searching">검색 중…</div>
+    <h3>🗺️ <span data-i18n="near_title">근처 기기</span></h3>
+    <div id="deviceList" class="device-list" data-i18n="searching">검색 중…</div>
   </div>
 
-  <div class="panel">
-    <h3 data-i18n="transfer_title">파일 전송</h3>
-    <div class="row">
-      <label class="pill" style="cursor:pointer" data-i18n="choose_file">
-        파일 선택 <input id="fileInput" type="file" style="display:none" multiple />
-      </label>
-      <button id="sendBtn" class="pill" disabled data-i18n="send">전송</button>
-      <button id="clearBtn" class="pill" data-i18n="clear">대기열 비우기</button>
-      <button id="speedTestBtn" class="pill" data-i18n="bench">속도테스트(5MB)</button>
+  <div class="hud">
+    <div class="panel">
+      <h3>📜 <span data-i18n="transfer_title">파일 전송</span></h3>
+      <div class="row">
+        <label class="pill" style="cursor:pointer"><span class="ico">📂</span><span data-i18n="choose_file">파일 선택</span>
+          <input id="fileInput" type="file" style="display:none" multiple />
+        </label>
+        <button id="sendBtn" class="pill" disabled><span class="ico">🗡️</span><span data-i18n="send">전송</span></button>
+        <button id="clearBtn" class="ghost"><span class="ico">🪶</span><span data-i18n="clear">대기열 비우기</span></button>
+        <button id="speedTestBtn" class="ghost"><span class="ico">⚖️</span><span data-i18n="bench">속도테스트(5MB)</span></button>
+      </div>
+      <div id="queue" style="margin-top:10px"></div>
     </div>
-    <div id="queue" style="margin-top:10px"></div>
+
+    <div class="panel inv">
+      <div class="inv-head">
+        <div class="row"><strong>🎒 <span data-i18n="inventory">인벤토리</span></strong></div>
+        <div class="row">
+          <button class="ghost" id="flt-all" data-i18n="filter_all">전체</button>
+          <button class="ghost" id="flt-img" data-i18n="filter_img">이미지</button>
+          <button class="ghost" id="flt-doc" data-i18n="filter_doc">문서</button>
+        </div>
+      </div>
+      <div class="inv-grid" id="invGrid"></div>
+    </div>
   </div>
 
   <div class="panel">
-    <h3 data-i18n="received_title">받은 파일 / 미리보기</h3>
-    <div id="gallery"></div>
-  </div>
-
-  <div class="panel">
-    <h3 data-i18n="debug_title">디버그 로그</h3>
+    <h3>🧰 <span data-i18n="debug_title">디버그 로그</span></h3>
     <div id="log"></div>
   </div>
+  </main>
 
-  <!-- Socket.IO loader: try local then CDN -->
+  <!-- Socket.IO loader: local then CDN fallback -->
   <script>
     window.__ioReady = (async function(){
       const hasIo = ()=> typeof window.io === 'function' || typeof window.io === 'object';
@@ -86,10 +185,21 @@
   (async function(){
     await (window.__ioReady||Promise.resolve(false));
     const $=s=>document.querySelector(s); const logEl=$('#log');
-    const statusEl=$('#status'), deviceListEl=$('#deviceList'), queueEl=$('#queue'), galleryEl=$('#gallery');
+    const statusEl=$('#status'), deviceListEl=$('#deviceList'), queueEl=$('#queue');
+    const invGrid=$('#invGrid');
     const fileInput=$('#fileInput'), sendBtn=$('#sendBtn'), clearBtn=$('#clearBtn'), refreshBtn=$('#refreshBtn'), leaveBtn=$('#leaveBtn'), speedBtn=$('#speedTestBtn');
     function log(...a){console.log(...a); if(logEl){logEl.innerText+=a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ')+'\n'; logEl.scrollTop=9e9}}
     function setStatus(s){ if(statusEl){ statusEl.textContent=s; log('[STATUS]',s) } }
+
+    // ==== FX particles (runes + motes) ====
+    const fx=document.getElementById('fx'); const fxc=fx.getContext('2d'); let W,H; const DPR=Math.min(2,devicePixelRatio||1);
+    function resize(){ W=fx.width=innerWidth*DPR; H=fx.height=innerHeight*DPR; fx.style.width='100%'; fx.style.height='100%' }
+    addEventListener('resize', resize); resize();
+    const motes=Array.from({length:80},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18*DPR,vy:(Math.random()-.5)*.18*DPR,r: (Math.random()*2+1)*DPR,a: Math.random()*0.35+0.15}));
+    function tick(){ fxc.clearRect(0,0,W,H); fxc.globalCompositeOperation='lighter';
+      for(const m of motes){ m.x+=m.vx; m.y+=m.vy; if(m.x<0||m.x>W) m.vx*=-1; if(m.y<0||m.y>H) m.vy*=-1; const g=fxc.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r*6); g.addColorStop(0,'rgba(241,197,106,0.35)'); g.addColorStop(1,'rgba(0,0,0,0)'); fxc.fillStyle=g; fxc.beginPath(); fxc.arc(m.x,m.y,m.r*6,0,Math.PI*2); fxc.fill() }
+      requestAnimationFrame(tick) }
+    requestAnimationFrame(tick);
 
     // ==== DataChannel tuning
     const isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -99,32 +209,96 @@
     const myName=`Device-${Math.floor(Math.random()*9000)+1000}-${Date.now()}`;
     let socket=null, peer=null, channel=null, role=null, currentRoom=null;
 
-    // ==== Minimal iDB for resumable transfer
+    // ==== IndexedDB for resumable transfer
     const DB_NAME='pb_store', DB_VER=1; let db=null;
     function idb(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER); r.onupgradeneeded=e=>{const d=e.target.result; d.createObjectStore('meta',{keyPath:'id'}); const chunks=d.createObjectStore('chunks',{keyPath:['id','i']}); chunks.createIndex('byId','id',{unique:false});}; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);})}
     async function dbReady(){ if(!db) db=await idb(); return db }
     async function metaGet(id){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('meta'); tx.objectStore('meta').get(id).onsuccess=e=>res(e.target.result||null); tx.onerror=()=>rej(tx.error)})}
     async function metaPut(m){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('meta','readwrite'); tx.objectStore('meta').put(m).onsuccess=()=>res(); tx.onerror=()=>rej(tx.error)})}
     async function chunkPut(id,i,buf){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks','readwrite'); tx.objectStore('chunks').put({id,i,buf}); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error)})}
-    async function chunkHas(id,i){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks'); tx.objectStore('chunks').get([id,i]).onsuccess=e=>res(!!e.target.result); tx.onerror=()=>rej(tx.error)})}
     async function chunksById(id,total){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks'); const idx=tx.objectStore('chunks').index('byId'); const req=idx.getAll(IDBKeyRange.only(id)); req.onsuccess=()=>{const arr=req.result||[]; const map=new Set(arr.map(x=>x.i)); res(map)}; req.onerror=()=>rej(tx.error)})}
     async function assemble(id,total,type){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks'); const idx=tx.objectStore('chunks').index('byId'); const req=idx.getAll(IDBKeyRange.only(id)); req.onsuccess=()=>{const arr=req.result.sort((a,b)=>a.i-b.i).map(x=>x.buf); res(new Blob(arr,{type}))}; req.onerror=()=>rej(tx.error)})}
 
+    // ==== Thumbnail helper + rarity
+    function guessRarity(file){ const t=file.type||''; if(t.startsWith('image/')) return 'rare'; if(/zip|rar|7z|dmg|iso/.test(file.name)) return 'epic'; if(/(mp4|mov|mkv|avi)$/i.test(file.name)) return 'legend'; return 'common' }
+    async function makeThumb(file, size=96){ try{ if(!file.type.startsWith('image/')) return null; const bmp=await createImageBitmap(file,{resizeWidth:size*2,resizeHeight:size*2,resizeQuality:'pixelated'}); const c=document.createElement('canvas'); c.width=size; c.height=size; const cx=c.getContext('2d'); cx.imageSmoothingEnabled=false; cx.drawImage(bmp,0,0,size,size); return c.toDataURL('image/webp',0.82) }catch{return null} }
+
     // ==== Queue/UI
-    const queue=[];
-    function addToQueue(file){ const id=`${file.name}-${file.size}-${file.lastModified}`; const row=document.createElement('div'); row.className='row'; row.id=`row-${id}`; row.innerHTML=`<div style="min-width:240px">${file.name} <small style="opacity:.7">(${(file.size/1024/1024).toFixed(2)}MB)</small></div><progress id="pg-${id}" max="100" value="0"></progress><div id="st-${id}" class="hint" style="width:200px">대기</div>`; queueEl.appendChild(row); queue.push({id,file,row}) }
+    const queue=[]; const paused=new Set(); const cancelled=new Set(); const bag=[]; // received files
+    function human(n){ const u=['B','KB','MB','GB']; let i=0,x=n; while(x>=1024&&i<u.length-1){x/=1024;i++} return `${x.toFixed(i?1:0)} ${u[i]}` }
+    async function addToQueue(file){ const id=`${file.name}-${file.size}-${file.lastModified}`; const row=document.createElement('div'); row.className='qitem'; row.id=`row-${id}`; const thumb=await makeThumb(file); row.innerHTML=`<img class="thumb" ${thumb?`src="${thumb}"`:'alt=""'}>
+      <div>
+        <div class="name">${file.name}</div>
+        <div class="sub"><span>💾 ${human(file.size)}</span> · <span id="sp-${id}">⏱️ 0s</span> · <span id="sp2-${id}">🚀 0 MB/s</span></div>
+        <progress id="pg-${id}" max="100" value="0"></progress>
+      </div>
+      <div class="actions">
+        <button class="ghost" id="pause-${id}">⏸️ <span data-i18n="pause">일시정지</span></button>
+        <button class="ghost" id="resume-${id}">▶️ <span data-i18n="resume_btn">재개</span></button>
+        <button class="ghost" id="cancel-${id}">🗑️ <span data-i18n="cancel">취소</span></button>
+      </div>`;
+      queueEl.appendChild(row); queue.push({id,file,row});
+      $('#pause-'+id).onclick=()=>{ paused.add(id) };
+      $('#resume-'+id).onclick=()=>{ paused.delete(id) };
+      $('#cancel-'+id).onclick=()=>{ cancelled.add(id) };
+    }
     function clearQueue(){ queue.length=0; queueEl.innerHTML=''; sendBtn.disabled=true }
-    function showPreview(file){ if(file.type.startsWith('image/')){ const u=URL.createObjectURL(file); const img=new Image(); img.src=u; img.onload=()=>URL.revokeObjectURL(u); galleryEl.prepend(img) } else { const a=document.createElement('a'); a.className='hint'; a.download=file.name; a.href=URL.createObjectURL(file); a.textContent=`⬇ ${file.name}`; galleryEl.prepend(a) } }
+
+    function pushToInventory(file){
+      bag.unshift(file);
+      renderInventory();
+    }
+
+    function renderInventory(filter='all'){
+      invGrid.innerHTML='';
+      const list = bag.filter(f=>{
+        if(filter==='img') return (f.type||'').startsWith('image/');
+        if(filter==='doc') return /(pdf|msword|officedocument|text|plain)/i.test(f.type) || /(pdf|docx?|pptx?|xlsx?|txt)$/i.test(f.name);
+        return true;
+      });
+      for(const f of list){
+        const slot=document.createElement('div'); slot.className='slot';
+        const rarity = guessRarity(f);
+        const cap=document.createElement('div'); cap.className='cap'; cap.textContent=f.name;
+        const rar=document.createElement('div'); rar.className='rar '+rarity;
+        if((f.type||'').startsWith('image/')){
+          const u=URL.createObjectURL(f); const img=new Image(); img.src=u; img.loading='lazy'; img.onload=()=>URL.revokeObjectURL(u); slot.appendChild(img);
+        }else{
+          slot.innerHTML='<div style="opacity:.9">📦</div>'
+        }
+        slot.appendChild(rar); slot.appendChild(cap);
+        // quick actions
+        slot.title = `${f.name}\n${human(f.size)}`;
+        slot.onclick=()=>{
+          const a=document.createElement('a'); a.download=f.name; a.href=URL.createObjectURL(f);
+          document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove() },0);
+        };
+        invGrid.appendChild(slot);
+      }
+    }
+
+    // Filters
+    $('#flt-all').onclick=()=>renderInventory('all');
+    $('#flt-img').onclick=()=>renderInventory('img');
+    $('#flt-doc').onclick=()=>renderInventory('doc');
+
+    function showPreview(file){ pushToInventory(file); }
+
+    // drag/drop & paste
+    ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault()}));
+    ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault()}));
+    document.addEventListener('drop', e=>{ if(e.dataTransfer){ [...e.dataTransfer.files].forEach(f=>addToQueue(f)) } });
+    window.addEventListener('paste', e=>{ const items=e.clipboardData?.items||[]; for(const it of items){ if(it.kind==='file'){ const f=it.getAsFile(); if(f) addToQueue(f) } } });
 
     // ==== Signaling
-    function initSocket(){ if(!window.io){setStatus('Socket.IO 미존재'); return} socket=io({transports:['websocket','polling']}); socket.on('connect',()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce',myName) }); socket.on('deviceList', list=>{ deviceListEl.innerHTML=''; const others=list.filter(x=>x.name!==myName); if(!others.length){ deviceListEl.innerHTML=`<div class="hint" data-i18n="no_peers">주변 탐험가 없음</div>`; window.__i18n?.apply(); return } others.forEach(d=>{ const b=document.createElement('button'); b.className='device-card'; b.textContent=d.name; b.onclick=()=>socket.emit('request',{from:myName,to:d.name}); deviceListEl.appendChild(b) }) }); socket.on('request',({from})=>{ if(confirm(`${from} ${window.__i18n?.dict?.[window.__i18n.pick()]?.req_confirm||'requests to connect'}`)) socket.emit('accept',{from:myName,to:from}) }); socket.on('pair', ({roomId,role:r})=>{ currentRoom=roomId; role=r; socket.emit('join',roomId); initPeer().then(()=>{ if(role==='offerer') makeOffer() }) }); socket.on('offer', async offer=>{ await peer.setRemoteDescription(offer); const answer=await peer.createAnswer(); await peer.setLocalDescription(answer); socket.emit('answer',{roomId:currentRoom,answer}) }); socket.on('answer', async answer=>{ await peer.setRemoteDescription(answer) }); socket.on('candidate', async ({candidate})=>{ if(!candidate) return; const s=candidate.candidate||''; if(s.includes(' typ host')){ try{ await peer.addIceCandidate(new RTCIceCandidate(candidate)); log('[ICE] host candidate added') }catch(e){ log('[ICE] add error',e) } } else { log('[ICE] ignored non-host') } }); refreshBtn.onclick=()=>socket.emit('announce',myName) }
+    function initSocket(){ if(!window.io){setStatus('Socket.IO 미존재'); return} socket=io({transports:['websocket','polling']}); socket.on('connect',()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce',myName) }); socket.on('deviceList', list=>{ deviceListEl.innerHTML=''; const others=list.filter(x=>x.name!==myName); if(!others.length){ deviceListEl.innerHTML=`<div class="hint" data-i18n="no_peers">주변 탐험가 없음</div>`; window.__i18n?.apply(); return } others.forEach(d=>{ const b=document.createElement('button'); b.className='device-card'; b.innerHTML=`<span class="ico">🧭</span><span>${d.name}</span><span class="badge">LAN</span>`; b.onclick=()=>socket.emit('request',{from:myName,to:d.name}); deviceListEl.appendChild(b) }) }); socket.on('request',({from})=>{ if(confirm(`${from} ${window.__i18n?.dict?.[window.__i18n.pick()]?.req_confirm||'requests to connect'}`)) socket.emit('accept',{from:myName,to:from}) }); socket.on('pair', ({roomId,role:r})=>{ currentRoom=roomId; role=r; socket.emit('join',roomId); initPeer().then(()=>{ if(role==='offerer') makeOffer() }) }); socket.on('offer', async offer=>{ await peer.setRemoteDescription(offer); const answer=await peer.createAnswer(); await peer.setLocalDescription(answer); socket.emit('answer',{roomId:currentRoom,answer}) }); socket.on('answer', async answer=>{ await peer.setRemoteDescription(answer) }); socket.on('candidate', async ({candidate})=>{ if(!candidate) return; const s=candidate.candidate||''; if(s.includes(' typ host')){ try{ await peer.addIceCandidate(new RTCIceCandidate(candidate)); log('[ICE] host candidate added') }catch(e){ log('[ICE] add error',e) } } else { log('[ICE] ignored non-host') } }); refreshBtn.onclick=()=>socket.emit('announce',myName) }
 
     // ==== Peer (LAN-only)
     async function initPeer(){ if(peer) try{peer.close()}catch{}; peer=new RTCPeerConnection({ iceServers:[], sdpSemantics:'unified-plan' }); peer.onicecandidate=e=>{ if(!e.candidate||!e.candidate.candidate) return; const s=e.candidate.candidate; if(s.includes(' typ host')){ socket.emit('candidate',{roomId:currentRoom,candidate:e.candidate}); log('[ICE] forwarded host candidate') } else { log('[ICE] skip non-host') } }; peer.onconnectionstatechange=()=>{ setStatus('P2P: '+peer.connectionState); leaveBtn.disabled=!['disconnected','failed','closed'].includes(peer.connectionState) }; peer.oniceconnectionstatechange=async()=>{ if(peer.iceConnectionState==='connected'||peer.iceConnectionState==='completed'){ try{ const st=await peer.getStats(); st.forEach(r=>{ if(r.type==='candidate-pair' && r.state==='succeeded' && r.selected){ log('[STATS] pair',r) } }) }catch(e){} } }; if(role==='offerer'){ channel=peer.createDataChannel('fileChannel',{ordered:true}); setupChannel(channel) } else { peer.ondatachannel=e=>{ channel=e.channel; setupChannel(channel) } } }
     async function makeOffer(){ const offer=await peer.createOffer({offerToReceiveAudio:false,offerToReceiveVideo:false}); await peer.setLocalDescription(offer); socket.emit('offer',{roomId:currentRoom,offer}); log('[SIGNAL] sent offer') }
 
     // ==== Resumable protocol state (receiver)
-    let rx=null; // {id,name,size,type,lastModified,chunkSize,total,received:Set,bench?:bool}
+    let rx=null; // {id,name,size,type,lastModified,chunkSize,total,received:Set}
 
     function setupChannel(ch){ channel=ch; channel.binaryType='arraybuffer'; channel.onopen=async()=>{ try{ const sctp=peer.sctp; if(sctp&&sctp.maxMessageSize){ MAX_CHUNK=Math.min(sctp.maxMessageSize,isSafari?128*1024:256*1024) } }catch{} try{ channel.bufferedAmountLowThreshold=LOW_WATER }catch{} setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_open||'DataChannel opened'); sendBtn.disabled=queue.length===0 };
       channel.onclose=()=>setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_close||'DataChannel closed'); channel.onerror=e=>log('[CHANNEL] error',e); channel.onmessage=onMsg }
@@ -135,32 +309,19 @@
         const m=JSON.parse(e.data);
         if(m.t==='hello'){ channel.send(JSON.stringify({t:'ack'})); return }
         if(m.t==='file'){
-          // meta for (re)send
           rx={ id:m.id, name:m.name, size:m.size, type:m.type||'application/octet-stream', lastModified:m.lastModified||Date.now(), chunkSize:m.chunkSize||MAX_CHUNK, total:m.total, received:new Set() };
           await metaPut({id:rx.id,name:rx.name,size:rx.size,type:rx.type,lastModified:rx.lastModified,chunkSize:rx.chunkSize,total:rx.total});
-          const have=await chunksById(rx.id, rx.total); // which chunks already stored
-          rx.received=have; setStatus(`수신 준비: ${rx.name} (${(rx.size/1024/1024).toFixed(2)}MB)`);
-          // tell sender what we miss (resume)
+          const have=await chunksById(rx.id, rx.total); rx.received=have; setStatus(`수신 준비: ${rx.name} (${(rx.size/1024/1024).toFixed(2)}MB)`);
           const missing=[]; for(let i=0;i<rx.total;i++){ if(!have.has(i)) missing.push(i) }
           channel.send(JSON.stringify({t:'resume_status', id:rx.id, missing}));
           return;
         }
-        if(m.t==='chunk'){
-          // header for a chunk (expects immediate binary frame next)
-          rx._expect = m.i; return;
-        }
+        if(m.t==='chunk'){ rx._expect = m.i; return; }
         if(m.t==='eof'){
-          // verify all; if missing request retransmit
-          const have=await chunksById(rx.id, rx.total);
-          const missing=[]; for(let i=0;i<rx.total;i++){ if(!have.has(i)) missing.push(i) }
+          const have=await chunksById(rx.id, rx.total); const missing=[]; for(let i=0;i<rx.total;i++){ if(!have.has(i)) missing.push(i) }
           if(missing.length){ channel.send(JSON.stringify({t:'need', id:rx.id, missing})); setStatus(`누락 ${missing.length}개 재요청`) }
-          else {
-            const blob=await assemble(rx.id, rx.total, rx.type); const file=new File([blob], rx.name,{type:rx.type,lastModified:rx.lastModified}); showPreview(file); setStatus(`수신 완료: ${rx.name}`); channel.send(JSON.stringify({t:'ack', id:rx.id})); rx=null;
-          }
+          else { const blob=await assemble(rx.id, rx.total, rx.type); const file=new File([blob], rx.name,{type:rx.type,lastModified:rx.lastModified}); showPreview(file); setStatus(`수신 완료: ${rx.name}`); channel.send(JSON.stringify({t:'ack', id:rx.id})); rx=null; }
           return;
-        }
-        if(m.t==='bench'){
-          rx={bench:true, id:'__bench', received:new Set(), total:Math.ceil(m.size/MAX_CHUNK)}; return;
         }
         if(m.t==='resume_probe'){
           const meta=await metaGet(m.id); if(!meta){ channel.send(JSON.stringify({t:'resume_status', id:m.id, missing:'all'})); return }
@@ -169,55 +330,57 @@
         }
         return;
       }
-      // binary payload
       if(rx && typeof rx._expect==='number'){
         const i=rx._expect; await chunkPut(rx.id, i, e.data); rx.received.add(i); rx._expect=undefined; return;
       }
     }
 
-    // ==== Sender pipeline with resume
+    // ==== Sender pipeline with pause/resume
     async function sendQueue(){ if(!channel||channel.readyState!=='open'){ alert('채널 준비 안됨'); return } sendBtn.disabled=true; for(const item of queue){ await sendOne(item).catch(err=>log('send error',err)) } clearQueue() }
 
     async function sendOne({id,file}){
-      const pg=$(`#pg-${id}`), st=$(`#st-${id}`); const buf=new Uint8Array(await file.arrayBuffer()); const total=Math.ceil(buf.length/MAX_CHUNK); const fileId=`${file.name}-${file.size}-${file.lastModified}`;
-      // 1) announce meta (receiver will reply resume_status)
+      const pg=$(`#pg-${id}`), sp=$(`#sp-${id}`), sp2=$(`#sp2-${id}`);
+      const buf=new Uint8Array(await file.arrayBuffer()); const total=Math.ceil(buf.length/MAX_CHUNK); const fileId=`${file.name}-${file.size}-${file.lastModified}`;
       channel.send(JSON.stringify({t:'file', id:fileId, name:file.name, size:file.size, type:file.type, lastModified:file.lastModified, chunkSize:MAX_CHUNK, total}));
       let missing=null;
       try{ missing=await new Promise(res=>{ const to=setTimeout(()=>res('all'),1200); const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='resume_status' && m.id===fileId){ channel.removeEventListener('message', onMsg); clearTimeout(to); res(m.missing) } }catch{} } }; channel.addEventListener('message', onMsg) }); }catch{}
-      let plan=[];
-      if(missing==='all' || !Array.isArray(missing)) plan=Array.from({length:total},(_,i)=>i); else plan=missing;
-      st.textContent = missing==='all'? '전체 전송…' : `이어 전송(${plan.length}/${total})…`;
+      let plan=[]; if(missing==='all' || !Array.isArray(missing)) plan=Array.from({length:total},(_,i)=>i); else plan=missing;
       let sent = total - plan.length; if(pg) pg.value = Math.round((sent/total)*100);
+
+      let start=performance.now(), sentBytes=sent*MAX_CHUNK; const eta=()=>{ const dt=(performance.now()-start)/1000; const speed= sentBytes/dt; const remain=buf.length-sentBytes; const t=(speed>0)? remain/speed : 0; if(sp) sp.textContent=`⏱️ ${t.toFixed(1)}s`; if(sp2) sp2.textContent=`🚀 ${(speed/1e6).toFixed(2)} MB/s` };
+      const tick=setInterval(eta,500);
+
       for(const i of plan){
-        const start=i*MAX_CHUNK, end=Math.min(start+MAX_CHUNK, buf.length); const chunk=buf.subarray(start,end);
+        if(cancelled.has(id)){ clearInterval(tick); cancelled.delete(id); return }
+        while(paused.has(id)) await new Promise(r=>setTimeout(r,120));
+        const startOff=i*MAX_CHUNK, end=Math.min(startOff+MAX_CHUNK, buf.length); const chunk=buf.subarray(startOff,end);
         if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) }
         channel.send(JSON.stringify({t:'chunk', id:fileId, i}));
         channel.send(chunk);
-        sent++; if(pg) pg.value=Math.round((sent/total)*100); st.textContent=`${sent}/${total}`;
+        sent++; sentBytes += chunk.length; if(pg) pg.value=Math.round((sent/total)*100); eta();
       }
-      // 2) eof -> wait for ack or need(missing)
+      clearInterval(tick);
+
       channel.send(JSON.stringify({t:'eof', id:fileId}));
       await new Promise((resolve)=>{
-        const onMsg=async ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack' && m.id===fileId){ channel.removeEventListener('message', onMsg); resolve() } else if(m.t==='need' && m.id===fileId){ // retransmit missing
-              const list=m.missing||[]; for(const i of list){ const start=i*MAX_CHUNK, end=Math.min(start+MAX_CHUNK, buf.length); const chunk=buf.subarray(start,end); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id:fileId, i})); channel.send(chunk); }
-              channel.send(JSON.stringify({t:'eof', id:fileId})); // finish again
-            }
+        const onMsg=async ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack' && m.id===fileId){ channel.removeEventListener('message', onMsg); resolve() } else if(m.t==='need' && m.id===fileId){ const list=m.missing||[]; for(const i of list){ const start=i*MAX_CHUNK, end=Math.min(start+MAX_CHUNK, buf.length); const chunk=buf.subarray(start,end); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id:fileId, i})); channel.send(chunk); } channel.send(JSON.stringify({t:'eof', id:fileId})); }
           }catch{}
         } };
         channel.addEventListener('message', onMsg);
       });
-      st.textContent='완료';
+      if(sp) sp.textContent='✅'; if(sp2) sp2.textContent='—';
     }
 
     // ==== UI bindings
-    fileInput.addEventListener('change', e=>{ [...e.target.files].forEach(addToQueue); if(channel&&channel.readyState==='open') sendBtn.disabled=false });
+    fileInput.addEventListener('change', async e=>{ for(const f of e.target.files) await addToQueue(f); if(channel&&channel.readyState==='open') sendBtn.disabled=false });
     sendBtn.onclick=sendQueue; clearBtn.onclick=clearQueue; leaveBtn.onclick=()=>{ try{peer?.close()}catch{}; setStatus('나감'); leaveBtn.disabled=true };
 
     // speed test 5MB
     speedBtn.onclick=async()=>{ if(!channel||channel.readyState!=='open') return alert('채널 미오픈'); const size=5*1024*1024; const buf=new Uint8Array(size); for(let i=0;i<size;i+=4096) buf[i]=i&255; const total=Math.ceil(size/MAX_CHUNK); const id='__bench'; const start=performance.now(); channel.send(JSON.stringify({t:'bench', size})); for(let i=0;i<total;i++){ const off=i*MAX_CHUNK; const chunk=buf.subarray(off, Math.min(off+MAX_CHUNK,size)); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id, i})); channel.send(chunk) } channel.send(JSON.stringify({t:'eof', id})); await new Promise(res=>{ const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack'&&m.id===id){ channel.removeEventListener('message', onMsg); res() } }catch{} } }; channel.addEventListener('message', onMsg) }); const dt=(performance.now()-start)/1000; alert(`${(5/dt).toFixed(2)} MB/s`) };
 
     // start
-    if(window.io) initSocket(); else setStatus('Socket.IO 로더 실패');
+    function init(){ if(window.io) initSocket(); else setStatus('Socket.IO 로더 실패'); }
+    init();
     window._pb={peer:()=>peer,channel:()=>channel}
   })();
   </script>
