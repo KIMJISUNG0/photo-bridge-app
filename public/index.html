@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Photo Bridge LAN — LAN-only Mode</title>
+  <title data-i18n-title>Photo Bridge LAN — LAN-only mode</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Uncial+Antiqua&display=swap" rel="stylesheet">
   <style>
     :root{ --bg:#071612; --panel:#123624; --accent:#9edc7a; --text:#eaf5e8 }
+    *{box-sizing:border-box}
     body{ margin:0; font-family:'Uncial Antiqua', serif; background:linear-gradient(180deg,#071612,#05120f); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; }
     header{ padding:18px; font-family:'Cinzel',serif; font-size:1.6rem; color:var(--accent) }
     .bar{ width:min(1100px,95%); display:flex; gap:8px; align-items:center; justify-content:space-between}
     .panel{ width:min(1100px,95%); background:linear-gradient(145deg,#0e3b25,#0a2e1b); border:2px solid var(--accent); border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.6) }
-    .device-card{ display:block; padding:8px 12px; margin:6px 0; background:transparent; border:1px solid rgba(255,255,255,0.03); color:var(--text); border-radius:6px; cursor:pointer; text-align:left }
+    .device-card{ display:block; padding:8px 12px; margin:6px 0; background:transparent; border:1px solid rgba(255,255,255,0.08); color:var(--text); border-radius:6px; cursor:pointer; text-align:left }
     .device-card:hover{ filter:brightness(1.05) }
     #gallery img{ max-width:200px; border:3px solid var(--accent); border-radius:6px; margin:8px }
     .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
@@ -20,43 +21,55 @@
     .pill{ padding:8px 10px; border-radius:8px; background:linear-gradient(145deg,#114b32,#0b3a26); border:1px solid var(--accent); color:var(--text); cursor:pointer }
     #log{ font-family:monospace; font-size:12px; max-height:140px; overflow:auto; background:rgba(0,0,0,0.2); padding:8px; border-radius:6px }
   </style>
+  <!-- i18n helper -->
+  <script>
+  (function(){
+    const dict={
+      ko:{title:"Photo Bridge LAN — LAN 전용 모드 (같은 Wi‑Fi/핫스팟 필요)",status_init:"초기화 대기…",refresh:"새로고침",leave:"나가기",near_title:"근처 기기",searching:"검색 중…",transfer_title:"파일 전송",choose_file:"파일 선택",send:"전송",clear:"대기열 비우기",bench:"속도테스트(5MB)",received_title:"받은 파일 / 미리보기",debug_title:"디버그 로그",no_peers:"주변 탐험가 없음",req_confirm:"에서 연결 요청",dc_open:"데이터채널 열림",dc_close:"데이터채널 닫힘",resume:"이어받기"},
+      en:{title:"Photo Bridge LAN — LAN-only mode (same Wi‑Fi / hotspot required)",status_init:"Initializing…",refresh:"Refresh",leave:"Leave",near_title:"Nearby devices",searching:"Searching…",transfer_title:"Transfer",choose_file:"Choose file",send:"Send",clear:"Clear queue",bench:"Speed test (5MB)",received_title:"Received / Preview",debug_title:"Debug log",no_peers:"No nearby peers",req_confirm:"requests to connect",dc_open:"DataChannel opened",dc_close:"DataChannel closed",resume:"Resume"}
+    };
+    function pick(){const url=new URL(location.href);const qs=url.searchParams.get('lang');if(qs)return qs;const s=localStorage.getItem('pb_lang');if(s)return s;const nav=(navigator.languages&&navigator.languages[0])||navigator.language||'en';const base=nav.toLowerCase().split('-')[0];return dict[base]?base:'en'}
+    function apply(){const lang=pick(),d=dict[lang]||dict.en;document.documentElement.lang=lang;document.title=d.title;document.querySelectorAll('[data-i18n-title]')?.forEach(el=>el.textContent=d.title);document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(d[k]) el.textContent=d[k]});}
+    window.__i18n={dict,pick,apply};document.addEventListener('DOMContentLoaded',apply);
+  })();
+  </script>
 </head>
 <body>
-  <header>Photo Bridge LAN — <strong>LAN-only</strong> mode (same Wi-Fi / hotspot required)</header>
+  <header data-i18n-title>Photo Bridge LAN — LAN-only mode</header>
 
-  <div class="bar" style="width:min(1100px,95%);">
-    <div class="hint" id="status">초기화 대기…</div>
+  <div class="bar">
+    <div class="hint" id="status" data-i18n="status_init">초기화 대기…</div>
     <div class="row">
-      <button id="refreshBtn" class="pill">새로고침</button>
-      <button id="leaveBtn" class="pill" disabled>나가기</button>
+      <button id="refreshBtn" class="pill" data-i18n="refresh">새로고침</button>
+      <button id="leaveBtn" class="pill" disabled data-i18n="leave">나가기</button>
     </div>
   </div>
 
   <div class="panel">
-    <h3>근처 기기</h3>
-    <div id="deviceList">검색 중…</div>
+    <h3 data-i18n="near_title">근처 기기</h3>
+    <div id="deviceList" data-i18n="searching">검색 중…</div>
   </div>
 
   <div class="panel">
-    <h3>파일 전송</h3>
+    <h3 data-i18n="transfer_title">파일 전송</h3>
     <div class="row">
-      <label class="pill" style="cursor:pointer">
-        파일 선택 <input id="fileInput" type="file" style="display:none" />
+      <label class="pill" style="cursor:pointer" data-i18n="choose_file">
+        파일 선택 <input id="fileInput" type="file" style="display:none" multiple />
       </label>
-      <button id="sendBtn" class="pill" disabled>전송</button>
-      <button id="clearBtn" class="pill">대기열 비우기</button>
-      <button id="speedTestBtn" class="pill">속도테스트(5MB)</button>
+      <button id="sendBtn" class="pill" disabled data-i18n="send">전송</button>
+      <button id="clearBtn" class="pill" data-i18n="clear">대기열 비우기</button>
+      <button id="speedTestBtn" class="pill" data-i18n="bench">속도테스트(5MB)</button>
     </div>
     <div id="queue" style="margin-top:10px"></div>
   </div>
 
   <div class="panel">
-    <h3>받은 파일 / 미리보기</h3>
+    <h3 data-i18n="received_title">받은 파일 / 미리보기</h3>
     <div id="gallery"></div>
   </div>
 
-  <div class="panel" style="width:min(1100px,95%);">
-    <h3>디버그 로그</h3>
+  <div class="panel">
+    <h3 data-i18n="debug_title">디버그 로그</h3>
     <div id="log"></div>
   </div>
 
@@ -64,341 +77,148 @@
   <script>
     window.__ioReady = (async function(){
       const hasIo = ()=> typeof window.io === 'function' || typeof window.io === 'object';
-      function load(src){
-        return new Promise(res=>{
-          const s=document.createElement('script');
-          s.src=src; s.async=true; s.crossOrigin='anonymous';
-          s.onload=()=>res(true); s.onerror=()=>res(false); document.head.appendChild(s);
-        });
-      }
-      if(hasIo()) return true;
-      let ok = await load('/socket.io/socket.io.js'); if(hasIo()) return true;
-      if(!ok) ok = await load('https://cdn.socket.io/4.7.5/socket.io.min.js');
-      return hasIo();
+      function load(src){return new Promise(res=>{const s=document.createElement('script');s.src=src; s.async=true; s.crossOrigin='anonymous'; s.onload=()=>res(true); s.onerror=()=>res(false); document.head.appendChild(s);});}
+      if(hasIo()) return true; let ok = await load('/socket.io/socket.io.js'); if(hasIo()) return true; if(!ok) ok = await load('https://cdn.socket.io/4.7.5/socket.io.min.js'); return hasIo();
     })();
   </script>
 
   <script>
   (async function(){
-    // wait socket.io
-    await (window.__ioReady || Promise.resolve(false));
+    await (window.__ioReady||Promise.resolve(false));
+    const $=s=>document.querySelector(s); const logEl=$('#log');
+    const statusEl=$('#status'), deviceListEl=$('#deviceList'), queueEl=$('#queue'), galleryEl=$('#gallery');
+    const fileInput=$('#fileInput'), sendBtn=$('#sendBtn'), clearBtn=$('#clearBtn'), refreshBtn=$('#refreshBtn'), leaveBtn=$('#leaveBtn'), speedBtn=$('#speedTestBtn');
+    function log(...a){console.log(...a); if(logEl){logEl.innerText+=a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ')+'\n'; logEl.scrollTop=9e9}}
+    function setStatus(s){ if(statusEl){ statusEl.textContent=s; log('[STATUS]',s) } }
 
-    // small logger
-    const $ = s => document.querySelector(s);
-    const logEl = $('#log');
-    function log(...args){ console.log(...args); if(logEl) logEl.innerText += args.map(a=> (typeof a==='string'?a:JSON.stringify(a))).join(' ') + '\n'; logEl.scrollTop = 1e9; }
+    // ==== DataChannel tuning
+    const isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    let MAX_CHUNK=isSafari?64*1024:256*1024; // tuned later via sctp.maxMessageSize
+    let LOW_WATER=2*1024*1024;
 
-    const statusEl = $('#status'), deviceListEl = $('#deviceList'), queueEl = $('#queue'), galleryEl = $('#gallery');
-    const fileInput = $('#fileInput'), sendBtn = $('#sendBtn'), clearBtn = $('#clearBtn'), refreshBtn = $('#refreshBtn');
-    const leaveBtn = $('#leaveBtn'), speedTestBtn = $('#speedTestBtn');
+    const myName=`Device-${Math.floor(Math.random()*9000)+1000}-${Date.now()}`;
+    let socket=null, peer=null, channel=null, role=null, currentRoom=null;
 
-    // Networking / transport tuning
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    let MAX_CHUNK = isSafari ? 64*1024 : 256*1024; // initial suggestion; may be tuned
-    let LOW_WATER = 2 * 1024 * 1024; // bufferedAmountLowThreshold
+    // ==== Minimal iDB for resumable transfer
+    const DB_NAME='pb_store', DB_VER=1; let db=null;
+    function idb(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER); r.onupgradeneeded=e=>{const d=e.target.result; d.createObjectStore('meta',{keyPath:'id'}); const chunks=d.createObjectStore('chunks',{keyPath:['id','i']}); chunks.createIndex('byId','id',{unique:false});}; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);})}
+    async function dbReady(){ if(!db) db=await idb(); return db }
+    async function metaGet(id){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('meta'); tx.objectStore('meta').get(id).onsuccess=e=>res(e.target.result||null); tx.onerror=()=>rej(tx.error)})}
+    async function metaPut(m){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('meta','readwrite'); tx.objectStore('meta').put(m).onsuccess=()=>res(); tx.onerror=()=>rej(tx.error)})}
+    async function chunkPut(id,i,buf){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks','readwrite'); tx.objectStore('chunks').put({id,i,buf}); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error)})}
+    async function chunkHas(id,i){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks'); tx.objectStore('chunks').get([id,i]).onsuccess=e=>res(!!e.target.result); tx.onerror=()=>rej(tx.error)})}
+    async function chunksById(id,total){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks'); const idx=tx.objectStore('chunks').index('byId'); const req=idx.getAll(IDBKeyRange.only(id)); req.onsuccess=()=>{const arr=req.result||[]; const map=new Set(arr.map(x=>x.i)); res(map)}; req.onerror=()=>rej(tx.error)})}
+    async function assemble(id,total,type){const d=await dbReady();return new Promise((res,rej)=>{const tx=d.transaction('chunks'); const idx=tx.objectStore('chunks').index('byId'); const req=idx.getAll(IDBKeyRange.only(id)); req.onsuccess=()=>{const arr=req.result.sort((a,b)=>a.i-b.i).map(x=>x.buf); res(new Blob(arr,{type}))}; req.onerror=()=>rej(tx.error)})}
 
-    const myName = `Device-${Math.floor(Math.random()*9000)+1000}-${Date.now()}`;
-    let socket = null, peer = null, channel = null, role = null, currentRoom = null;
-    const queue = [];
+    // ==== Queue/UI
+    const queue=[];
+    function addToQueue(file){ const id=`${file.name}-${file.size}-${file.lastModified}`; const row=document.createElement('div'); row.className='row'; row.id=`row-${id}`; row.innerHTML=`<div style="min-width:240px">${file.name} <small style="opacity:.7">(${(file.size/1024/1024).toFixed(2)}MB)</small></div><progress id="pg-${id}" max="100" value="0"></progress><div id="st-${id}" class="hint" style="width:200px">대기</div>`; queueEl.appendChild(row); queue.push({id,file,row}) }
+    function clearQueue(){ queue.length=0; queueEl.innerHTML=''; sendBtn.disabled=true }
+    function showPreview(file){ if(file.type.startsWith('image/')){ const u=URL.createObjectURL(file); const img=new Image(); img.src=u; img.onload=()=>URL.revokeObjectURL(u); galleryEl.prepend(img) } else { const a=document.createElement('a'); a.className='hint'; a.download=file.name; a.href=URL.createObjectURL(file); a.textContent=`⬇ ${file.name}`; galleryEl.prepend(a) } }
 
-    function setStatus(s){ if(statusEl) statusEl.textContent = s; log('[STATUS]', s); }
+    // ==== Signaling
+    function initSocket(){ if(!window.io){setStatus('Socket.IO 미존재'); return} socket=io({transports:['websocket','polling']}); socket.on('connect',()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce',myName) }); socket.on('deviceList', list=>{ deviceListEl.innerHTML=''; const others=list.filter(x=>x.name!==myName); if(!others.length){ deviceListEl.innerHTML=`<div class="hint" data-i18n="no_peers">주변 탐험가 없음</div>`; window.__i18n?.apply(); return } others.forEach(d=>{ const b=document.createElement('button'); b.className='device-card'; b.textContent=d.name; b.onclick=()=>socket.emit('request',{from:myName,to:d.name}); deviceListEl.appendChild(b) }) }); socket.on('request',({from})=>{ if(confirm(`${from} ${window.__i18n?.dict?.[window.__i18n.pick()]?.req_confirm||'requests to connect'}`)) socket.emit('accept',{from:myName,to:from}) }); socket.on('pair', ({roomId,role:r})=>{ currentRoom=roomId; role=r; socket.emit('join',roomId); initPeer().then(()=>{ if(role==='offerer') makeOffer() }) }); socket.on('offer', async offer=>{ await peer.setRemoteDescription(offer); const answer=await peer.createAnswer(); await peer.setLocalDescription(answer); socket.emit('answer',{roomId:currentRoom,answer}) }); socket.on('answer', async answer=>{ await peer.setRemoteDescription(answer) }); socket.on('candidate', async ({candidate})=>{ if(!candidate) return; const s=candidate.candidate||''; if(s.includes(' typ host')){ try{ await peer.addIceCandidate(new RTCIceCandidate(candidate)); log('[ICE] host candidate added') }catch(e){ log('[ICE] add error',e) } } else { log('[ICE] ignored non-host') } }); refreshBtn.onclick=()=>socket.emit('announce',myName) }
 
-    // =========== Signaling (simple) ===========
-    function initSocket(){
-      if(!window.io){ setStatus('Socket.IO 클라이언트 없음'); return; }
-      socket = io({ transports:['websocket','polling'] });
+    // ==== Peer (LAN-only)
+    async function initPeer(){ if(peer) try{peer.close()}catch{}; peer=new RTCPeerConnection({ iceServers:[], sdpSemantics:'unified-plan' }); peer.onicecandidate=e=>{ if(!e.candidate||!e.candidate.candidate) return; const s=e.candidate.candidate; if(s.includes(' typ host')){ socket.emit('candidate',{roomId:currentRoom,candidate:e.candidate}); log('[ICE] forwarded host candidate') } else { log('[ICE] skip non-host') } }; peer.onconnectionstatechange=()=>{ setStatus('P2P: '+peer.connectionState); leaveBtn.disabled=!['disconnected','failed','closed'].includes(peer.connectionState) }; peer.oniceconnectionstatechange=async()=>{ if(peer.iceConnectionState==='connected'||peer.iceConnectionState==='completed'){ try{ const st=await peer.getStats(); st.forEach(r=>{ if(r.type==='candidate-pair' && r.state==='succeeded' && r.selected){ log('[STATS] pair',r) } }) }catch(e){} } }; if(role==='offerer'){ channel=peer.createDataChannel('fileChannel',{ordered:true}); setupChannel(channel) } else { peer.ondatachannel=e=>{ channel=e.channel; setupChannel(channel) } } }
+    async function makeOffer(){ const offer=await peer.createOffer({offerToReceiveAudio:false,offerToReceiveVideo:false}); await peer.setLocalDescription(offer); socket.emit('offer',{roomId:currentRoom,offer}); log('[SIGNAL] sent offer') }
 
-      socket.on('connect', ()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce', myName); });
-      socket.on('deviceList', list=>{
-        deviceListEl.innerHTML = '';
-        const others = list.filter(x=> x.name !== myName);
-        if(!others.length){ deviceListEl.innerHTML = '<div class="hint">주변 탐험가 없음</div>'; return; }
-        others.forEach(d=>{
-          const btn = document.createElement('button');
-          btn.className = 'device-card';
-          btn.textContent = d.name;
-          btn.onclick = ()=> socket.emit('request', { from: myName, to: d.name });
-          deviceListEl.appendChild(btn);
-        });
-      });
+    // ==== Resumable protocol state (receiver)
+    let rx=null; // {id,name,size,type,lastModified,chunkSize,total,received:Set,bench?:bool}
 
-      socket.on('request', ({from})=>{
-        if(confirm(`${from}에서 연결 요청`)) socket.emit('accept',{ from: myName, to: from });
-      });
+    function setupChannel(ch){ channel=ch; channel.binaryType='arraybuffer'; channel.onopen=async()=>{ try{ const sctp=peer.sctp; if(sctp&&sctp.maxMessageSize){ MAX_CHUNK=Math.min(sctp.maxMessageSize,isSafari?128*1024:256*1024) } }catch{} try{ channel.bufferedAmountLowThreshold=LOW_WATER }catch{} setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_open||'DataChannel opened'); sendBtn.disabled=queue.length===0 };
+      channel.onclose=()=>setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_close||'DataChannel closed'); channel.onerror=e=>log('[CHANNEL] error',e); channel.onmessage=onMsg }
 
-      // pair: server assigns room + roles
-      socket.on('pair', ({roomId, role: r})=>{
-        log('[SIGNAL] pair', roomId, r);
-        currentRoom = roomId; role = r;
-        socket.emit('join', roomId);
-        initPeer().then(()=>{ if(role === 'offerer') makeOffer(); });
-      });
-
-      // offer/answer exchanged as-is
-      socket.on('offer', async (offer) => {
-        log('[SIGNAL] offer received');
-        await peer.setRemoteDescription(offer);
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-        socket.emit('answer', { roomId: currentRoom, answer });
-      });
-      socket.on('answer', async (answer) => {
-        log('[SIGNAL] answer received');
-        await peer.setRemoteDescription(answer);
-      });
-
-      // candidate messages: server forwards { roomId, candidate }
-      socket.on('candidate', async ({ candidate }) => {
-        if(!candidate) return;
-        const s = candidate.candidate || '';
-        // **LAN-only accept**: only add host candidates
-        if(s.includes(' typ host ') || s.includes(' typ host')){
-          try { await peer.addIceCandidate(new RTCIceCandidate(candidate)); log('[ICE] host candidate added'); }
-          catch(e){ log('[ICE] add error', e); }
-        } else {
-          log('[ICE] ignored non-host candidate');
-        }
-      });
-
-      refreshBtn.onclick = ()=> socket.emit('announce', myName);
-    }
-
-    // =========== Peer setup (LAN-only) ===========
-    async function initPeer(){
-      if(peer) try{ peer.close(); }catch(e){}
-
-      // IMPORTANT: no STUN/TURN -> only host candidates (if available)
-      peer = new RTCPeerConnection({
-        iceServers: [],   // empty prevents srflx/relay generation
-        sdpSemantics: 'unified-plan'
-      });
-
-      peer.onicecandidate = (e) => {
-        if(!e.candidate || !e.candidate.candidate) return;
-        const s = e.candidate.candidate;
-        // forward only host candidates
-        if(s.includes(' typ host ') || s.includes(' typ host')){
-          socket.emit('candidate', { roomId: currentRoom, candidate: e.candidate });
-          log('[ICE] forwarded host candidate');
-        } else {
-          log('[ICE] skipped non-host candidate (not forwarded)');
-        }
-      };
-
-      peer.onconnectionstatechange = ()=> {
-        setStatus('P2P 상태: ' + peer.connectionState);
-        leaveBtn.disabled = !['disconnected','failed','closed'].includes(peer.connectionState);
-      };
-
-      // optional: inspect candidate-pair stats when connected
-      peer.oniceconnectionstatechange = async ()=>{
-        log('[ICE] state', peer.iceConnectionState);
-        if(peer.iceConnectionState === 'connected' || peer.iceConnectionState === 'completed'){
-          try{
-            const stats = await peer.getStats();
-            stats.forEach(r=>{
-              if(r.type === 'candidate-pair' && r.state === 'succeeded' && r.selected){
-                log('[STATS] selected candidate-pair', r);
-              }
-            });
-          }catch(e){ log('[STATS] getStats error', e); }
-        }
-      };
-
-      if(role === 'offerer'){
-        channel = peer.createDataChannel('fileChannel', { ordered: true });
-        setupChannel(channel);
-      } else {
-        peer.ondatachannel = (ev) => { channel = ev.channel; setupChannel(channel); };
-      }
-    }
-
-    async function makeOffer(){
-      const offer = await peer.createOffer({ offerToReceiveAudio:false, offerToReceiveVideo:false });
-      await peer.setLocalDescription(offer);
-      socket.emit('offer', { roomId: currentRoom, offer });
-      log('[SIGNAL] sent offer');
-    }
-
-    function setupChannel(ch){
-      channel = ch;
-      channel.binaryType = 'arraybuffer';
-
-      // tune thresholds after open
-      channel.onopen = async () => {
-        try{
-          // try to derive reasonable chunk size from SCTP if available
-          const sctp = peer.sctp;
-          if(sctp && sctp.maxMessageSize){
-            MAX_CHUNK = Math.min(sctp.maxMessageSize, isSafari ? 128*1024 : 256*1024);
-            log('[CHANNEL] maxMessageSize', sctp.maxMessageSize, '-> MAX_CHUNK', MAX_CHUNK);
-          } else {
-            log('[CHANNEL] sctp not available, using MAX_CHUNK', MAX_CHUNK);
-          }
-        }catch(e){ log('[CHANNEL] tuning error', e); }
-        // allow larger in-flight bytes
-        try{ channel.bufferedAmountLowThreshold = LOW_WATER; }catch(e){}
-        setStatus('데이터채널 열림');
-        sendBtn.disabled = queue.length === 0;
-      };
-
-      channel.onclose = ()=> setStatus('데이터채널 닫힘');
-      channel.onerror = (e)=> log('[CHANNEL] error', e);
-      channel.onmessage = onData;
-    }
-
-    // =========== Protocol: control frames (text) + binary chunks ===========
-    // control messages are small JSON strings; binary messages are chunk ArrayBuffers
-    let rxCtx = null;
-
-    async function onData(e){
-      if(typeof e.data === 'string'){
-        const msg = JSON.parse(e.data);
-        if(msg.t === 'hello'){ channel.send(JSON.stringify({ t:'ack' })); return; }
-        if(msg.t === 'file'){
-          rxCtx = { name: msg.name, size: msg.size, type: msg.type || 'application/octet-stream', lastModified: msg.lastModified || Date.now(), parts: [], received: 0, hash: msg.hash };
-          setStatus(`수신 시작: ${msg.name} (${(msg.size/1024/1024).toFixed(2)} MB)`);
+    // ---- handle incoming control/data
+    async function onMsg(e){
+      if(typeof e.data==='string'){
+        const m=JSON.parse(e.data);
+        if(m.t==='hello'){ channel.send(JSON.stringify({t:'ack'})); return }
+        if(m.t==='file'){
+          // meta for (re)send
+          rx={ id:m.id, name:m.name, size:m.size, type:m.type||'application/octet-stream', lastModified:m.lastModified||Date.now(), chunkSize:m.chunkSize||MAX_CHUNK, total:m.total, received:new Set() };
+          await metaPut({id:rx.id,name:rx.name,size:rx.size,type:rx.type,lastModified:rx.lastModified,chunkSize:rx.chunkSize,total:rx.total});
+          const have=await chunksById(rx.id, rx.total); // which chunks already stored
+          rx.received=have; setStatus(`수신 준비: ${rx.name} (${(rx.size/1024/1024).toFixed(2)}MB)`);
+          // tell sender what we miss (resume)
+          const missing=[]; for(let i=0;i<rx.total;i++){ if(!have.has(i)) missing.push(i) }
+          channel.send(JSON.stringify({t:'resume_status', id:rx.id, missing}));
           return;
         }
-        if(msg.t === 'eof'){
-          const blob = new Blob(rxCtx.parts, { type: rxCtx.type });
-          if(blob.size !== rxCtx.size){ log('size mismatch'); channel.send(JSON.stringify({ t:'err', why:'size_mismatch' })); rxCtx = null; return; }
-          if(rxCtx.hash){
-            const buf = await blob.arrayBuffer(); const digest = await crypto.subtle.digest('SHA-256', buf);
-            // hex
-            const hex = [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
-            if(hex !== rxCtx.hash){ log('hash mismatch'); channel.send(JSON.stringify({ t:'err', why:'hash_mismatch' })); rxCtx = null; return; }
+        if(m.t==='chunk'){
+          // header for a chunk (expects immediate binary frame next)
+          rx._expect = m.i; return;
+        }
+        if(m.t==='eof'){
+          // verify all; if missing request retransmit
+          const have=await chunksById(rx.id, rx.total);
+          const missing=[]; for(let i=0;i<rx.total;i++){ if(!have.has(i)) missing.push(i) }
+          if(missing.length){ channel.send(JSON.stringify({t:'need', id:rx.id, missing})); setStatus(`누락 ${missing.length}개 재요청`) }
+          else {
+            const blob=await assemble(rx.id, rx.total, rx.type); const file=new File([blob], rx.name,{type:rx.type,lastModified:rx.lastModified}); showPreview(file); setStatus(`수신 완료: ${rx.name}`); channel.send(JSON.stringify({t:'ack', id:rx.id})); rx=null;
           }
-          const f = new File([blob], rxCtx.name, { type: rxCtx.type, lastModified: rxCtx.lastModified });
-          showPreview(f);
-          setStatus(`수신 완료: ${rxCtx.name}`);
-          channel.send(JSON.stringify({ t:'ack' }));
-          rxCtx = null;
           return;
         }
-        if(msg.t === 'err'){ log('peer err', msg.why); setStatus('상대 오류: ' + msg.why); return; }
+        if(m.t==='bench'){
+          rx={bench:true, id:'__bench', received:new Set(), total:Math.ceil(m.size/MAX_CHUNK)}; return;
+        }
+        if(m.t==='resume_probe'){
+          const meta=await metaGet(m.id); if(!meta){ channel.send(JSON.stringify({t:'resume_status', id:m.id, missing:'all'})); return }
+          const have=await chunksById(m.id, meta.total); const missing=[]; for(let i=0;i<meta.total;i++){ if(!have.has(i)) missing.push(i) }
+          channel.send(JSON.stringify({t:'resume_status', id:m.id, missing})); return;
+        }
         return;
       }
-
-      // binary chunk (maybe bench or file chunk)
-      if(rxCtx && rxCtx.bench){
-        rxCtx.bytes += e.data.byteLength;
-        return;
+      // binary payload
+      if(rx && typeof rx._expect==='number'){
+        const i=rx._expect; await chunkPut(rx.id, i, e.data); rx.received.add(i); rx._expect=undefined; return;
       }
-      if(rxCtx){ rxCtx.parts.push(e.data); rxCtx.received += e.data.byteLength; }
     }
 
-    // =========== send pipeline ===========
-    async function sendQueue(){
-      if(!channel || channel.readyState !== 'open'){ alert('데이터채널 준비되지 않음'); return; }
-      sendBtn.disabled = true;
-      for(const item of queue){ try{ await sendOne(item); }catch(e){ log('send error', e); } }
-      clearQueue();
-    }
+    // ==== Sender pipeline with resume
+    async function sendQueue(){ if(!channel||channel.readyState!=='open'){ alert('채널 준비 안됨'); return } sendBtn.disabled=true; for(const item of queue){ await sendOne(item).catch(err=>log('send error',err)) } clearQueue() }
 
-    async function sendOne({ id, file }){
-      const pg = document.getElementById(`pg-${id}`);
-      const st = document.getElementById(`st-${id}`);
-      st.textContent = '해시 계산 중…';
-      const buf = await file.arrayBuffer();
-      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-      const hashHex = [...new Uint8Array(hashBuf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-
-      st.textContent = '전송 시작…';
-      channel.send(JSON.stringify({ t:'file', name: file.name, size: file.size, type: file.type, lastModified: file.lastModified, hash: hashHex }));
-      await new Promise(r=>setTimeout(r, 10));
-
-      const view = new Uint8Array(buf);
-      let sent = 0;
-      while(sent < view.length){
-        const chunk = view.subarray(sent, Math.min(sent + MAX_CHUNK, view.length));
-        // backpressure
-        if(channel.bufferedAmount > channel.bufferedAmountLowThreshold){
-          await new Promise(res=>{
-            const onLow = ()=>{ channel.removeEventListener('bufferedamountlow', onLow); res(); };
-            channel.addEventListener('bufferedamountlow', onLow, { once:true });
-          });
-        }
+    async function sendOne({id,file}){
+      const pg=$(`#pg-${id}`), st=$(`#st-${id}`); const buf=new Uint8Array(await file.arrayBuffer()); const total=Math.ceil(buf.length/MAX_CHUNK); const fileId=`${file.name}-${file.size}-${file.lastModified}`;
+      // 1) announce meta (receiver will reply resume_status)
+      channel.send(JSON.stringify({t:'file', id:fileId, name:file.name, size:file.size, type:file.type, lastModified:file.lastModified, chunkSize:MAX_CHUNK, total}));
+      let missing=null;
+      try{ missing=await new Promise(res=>{ const to=setTimeout(()=>res('all'),1200); const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='resume_status' && m.id===fileId){ channel.removeEventListener('message', onMsg); clearTimeout(to); res(m.missing) } }catch{} } }; channel.addEventListener('message', onMsg) }); }catch{}
+      let plan=[];
+      if(missing==='all' || !Array.isArray(missing)) plan=Array.from({length:total},(_,i)=>i); else plan=missing;
+      st.textContent = missing==='all'? '전체 전송…' : `이어 전송(${plan.length}/${total})…`;
+      let sent = total - plan.length; if(pg) pg.value = Math.round((sent/total)*100);
+      for(const i of plan){
+        const start=i*MAX_CHUNK, end=Math.min(start+MAX_CHUNK, buf.length); const chunk=buf.subarray(start,end);
+        if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) }
+        channel.send(JSON.stringify({t:'chunk', id:fileId, i}));
         channel.send(chunk);
-        sent += chunk.length;
-        if(pg) pg.value = Math.round((sent / view.length) * 100);
-        if(st) st.textContent = `${(sent/1024/1024).toFixed(2)} MB / ${(view.length/1024/1024).toFixed(2)} MB`;
+        sent++; if(pg) pg.value=Math.round((sent/total)*100); st.textContent=`${sent}/${total}`;
       }
-      channel.send(JSON.stringify({ t:'eof' }));
-
-      // wait for ack
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(()=>reject(new Error('ACK timeout')), 15000);
-        const onMsg = (ev) => {
-          if(typeof ev.data === 'string'){
-            try{ const m = JSON.parse(ev.data); if(m.t === 'ack'){ clearTimeout(timer); channel.removeEventListener('message', onMsg); st.textContent = '완료'; resolve(); } }catch(e){}
-          }
-        };
-        channel.addEventListener('message', onMsg);
-      }).catch(err=>{ st.textContent = '에러'; channel.send(JSON.stringify({ t:'err', why: err.message })); });
-    }
-
-    // =========== UI helpers ===========
-    function addToQueue(file){
-      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2,8)}`;
-      const row = document.createElement('div'); row.className='row'; row.id = `row-${id}`;
-      row.innerHTML = `<div style="min-width:240px">${file.name} <small style="opacity:.7">(${(file.size/1024/1024).toFixed(2)}MB)</small></div>
-        <progress id="pg-${id}" max="100" value="0"></progress>
-        <div id="st-${id}" class="hint" style="width:180px">대기</div>`;
-      queueEl.appendChild(row);
-      queue.push({ id, file, row });
-      sendBtn.disabled = !channel || channel.readyState !== 'open' ? true : false;
-    }
-    function clearQueue(){ queue.length = 0; queueEl.innerHTML = ''; sendBtn.disabled = true; }
-    function showPreview(file){
-      if(file.type.startsWith('image/')){ const u = URL.createObjectURL(file); const img = new Image(); img.src = u; img.onload=()=>URL.revokeObjectURL(u); galleryEl.prepend(img); }
-      else { const a = document.createElement('a'); a.className='hint'; a.download = file.name; a.href = URL.createObjectURL(file); a.textContent = `⬇ ${file.name}`; galleryEl.prepend(a); }
-    }
-
-    // file input
-    fileInput.addEventListener('change', e => { [...e.target.files].forEach(addToQueue); });
-
-    // drag/drop support
-    ['dragenter','dragover'].forEach(ev=>{ document.addEventListener(ev, e=>{ e.preventDefault(); }); });
-    ['dragleave','drop'].forEach(ev=>{ document.addEventListener(ev, e=>{ e.preventDefault(); }); });
-    document.addEventListener('drop', e=>{ if(e.dataTransfer) [...e.dataTransfer.files].forEach(addToQueue); });
-
-    sendBtn.onclick = sendQueue; clearBtn.onclick = clearQueue;
-    leaveBtn.onclick = ()=>{ try{ peer?.close(); }catch(e){}; setStatus('나감'); leaveBtn.disabled = true; };
-
-    // speed test: 5MB bench
-    speedTestBtn.onclick = async ()=>{
-      if(!channel || channel.readyState !== 'open'){ alert('채널 미오픈'); return; }
-      const size = 5 * 1024 * 1024;
-      const buf = new Uint8Array(size); for(let i=0;i<size;i+=4096) buf[i] = i&255;
-      channel.send(JSON.stringify({ t:'file', name:'__bench.bin', size, type:'application/octet-stream', lastModified:Date.now(), hash:'' }));
-      const start = performance.now();
-      for(let off=0; off<buf.length; off += MAX_CHUNK){
-        const chunk = buf.subarray(off, Math.min(off + MAX_CHUNK, buf.length));
-        if(channel.bufferedAmount > channel.bufferedAmountLowThreshold){
-          await new Promise(res=>{
-            const onLow = ()=>{ channel.removeEventListener('bufferedamountlow', onLow); res(); };
-            channel.addEventListener('bufferedamountlow', onLow, { once:true });
-          });
-        }
-        channel.send(chunk);
-      }
-      channel.send(JSON.stringify({ t:'eof' }));
-      // wait bench ack
-      await new Promise(resolve=>{
-        const onMsg = (ev) => { if(typeof ev.data === 'string') { try{ const m = JSON.parse(ev.data); if(m.t === 'ack'){ channel.removeEventListener('message', onMsg); resolve(); } }catch(e){} } };
+      // 2) eof -> wait for ack or need(missing)
+      channel.send(JSON.stringify({t:'eof', id:fileId}));
+      await new Promise((resolve)=>{
+        const onMsg=async ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack' && m.id===fileId){ channel.removeEventListener('message', onMsg); resolve() } else if(m.t==='need' && m.id===fileId){ // retransmit missing
+              const list=m.missing||[]; for(const i of list){ const start=i*MAX_CHUNK, end=Math.min(start+MAX_CHUNK, buf.length); const chunk=buf.subarray(start,end); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id:fileId, i})); channel.send(chunk); }
+              channel.send(JSON.stringify({t:'eof', id:fileId})); // finish again
+            }
+          }catch{}
+        } };
         channel.addEventListener('message', onMsg);
       });
-      const dt = (performance.now() - start)/1000;
-      alert(`대략 ${(5/dt).toFixed(2)} MB/s (elapsed ${dt.toFixed(2)}s)`);
-    };
+      st.textContent='완료';
+    }
 
-    // finally init signaling
-    if(window.io) initSocket();
-    else setStatus('Socket.IO 로더 실패 — 콘솔 확인');
+    // ==== UI bindings
+    fileInput.addEventListener('change', e=>{ [...e.target.files].forEach(addToQueue); if(channel&&channel.readyState==='open') sendBtn.disabled=false });
+    sendBtn.onclick=sendQueue; clearBtn.onclick=clearQueue; leaveBtn.onclick=()=>{ try{peer?.close()}catch{}; setStatus('나감'); leaveBtn.disabled=true };
 
-    // expose some helper on window for debugging
-    window._pb = { peer: ()=>peer, channel: ()=>channel, myName };
+    // speed test 5MB
+    speedBtn.onclick=async()=>{ if(!channel||channel.readyState!=='open') return alert('채널 미오픈'); const size=5*1024*1024; const buf=new Uint8Array(size); for(let i=0;i<size;i+=4096) buf[i]=i&255; const total=Math.ceil(size/MAX_CHUNK); const id='__bench'; const start=performance.now(); channel.send(JSON.stringify({t:'bench', size})); for(let i=0;i<total;i++){ const off=i*MAX_CHUNK; const chunk=buf.subarray(off, Math.min(off+MAX_CHUNK,size)); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id, i})); channel.send(chunk) } channel.send(JSON.stringify({t:'eof', id})); await new Promise(res=>{ const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack'&&m.id===id){ channel.removeEventListener('message', onMsg); res() } }catch{} } }; channel.addEventListener('message', onMsg) }); const dt=(performance.now()-start)/1000; alert(`${(5/dt).toFixed(2)} MB/s`) };
+
+    // start
+    if(window.io) initSocket(); else setStatus('Socket.IO 로더 실패');
+    window._pb={peer:()=>peer,channel:()=>channel}
   })();
   </script>
 </body>
