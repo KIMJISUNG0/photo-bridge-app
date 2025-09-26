@@ -1,60 +1,50 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server); // 같은 오리진이면 CORS 불필요
 
-app.use(express.static('public'));
+// 정적 서빙
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-let devices = [];
+// 헬스체크(선택)
+app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
-io.on('connection', socket => {
-  console.log("✅ Connected:", socket.id);
+// ── 간단 시그널링
+const clients = new Map(); // socket.id -> { name }
 
-  // 기기 등록
-  socket.on('announce', name => {
-    // 중복 제거
-    devices = devices.filter(d => d.id !== socket.id && d.name !== name);
-    devices.push({ name, id: socket.id });
-    console.log("📡 Announce:", name);
-    io.emit('deviceList', devices);
-  });
+io.on('connection', (socket) => {
+  socket.on('announce', (name) => { clients.set(socket.id, { name }); broadcastList(); });
+  socket.on('disconnect', () => { clients.delete(socket.id); broadcastList(); });
 
-  // 연결 요청
+  function broadcastList() {
+    const list = [...clients.entries()].map(([id, v]) => ({ id, name: v.name }));
+    io.emit('deviceList', list);
+  }
+
   socket.on('request', ({ from, to }) => {
-    const target = devices.find(d => d.name === to);
-    console.log("➡️ Request", { from, to, found: !!target });
-    if (target) io.to(target.id).emit('request', { from });
+    const target = [...clients.entries()].find(([,v]) => v.name === to)?.[0];
+    if (target) io.to(target).emit('request', { from });
   });
 
-  // 연결 수락
   socket.on('accept', ({ from, to }) => {
-    console.log(`✅ Accept event: ${from} accepted ${to}`);
-    const roomId = from + '-' + to;
-    const fromDevice = devices.find(d => d.name === from);
-    const toDevice = devices.find(d => d.name === to);
-    if (fromDevice && toDevice) {
-      io.to(fromDevice.id).emit('pair', { roomId, role: 'offerer' });
-      io.to(toDevice.id).emit('pair', { roomId, role: 'answerer' });
-    }
+    const a = [...clients.entries()].find(([,v]) => v.name === from)?.[0];
+    const b = [...clients.entries()].find(([,v]) => v.name === to)?.[0];
+    if (!a || !b) return;
+    const roomId = `room-${a}-${b}-${Date.now()}`;
+    io.to(a).emit('pair', { roomId, role: 'offerer' });
+    io.to(b).emit('pair', { roomId, role: 'answerer' });
   });
 
-  // WebRTC 시그널링
-  socket.on('join', roomId => socket.join(roomId));
+  socket.on('join', (roomId) => socket.join(roomId));
   socket.on('offer', ({ roomId, offer }) => socket.to(roomId).emit('offer', offer));
   socket.on('answer', ({ roomId, answer }) => socket.to(roomId).emit('answer', answer));
   socket.on('candidate', ({ roomId, candidate }) => socket.to(roomId).emit('candidate', candidate));
-
-  // 연결 해제
-  socket.on('disconnect', () => {
-    devices = devices.filter(d => d.id !== socket.id);
-    io.emit('deviceList', devices);
-    console.log("❌ Disconnected:", socket.id);
-  });
 });
 
-server.listen(process.env.PORT || 3000, () => {
-  console.log('🚀 Server running');
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('Photo Bridge LAN signaling on :' + PORT));
