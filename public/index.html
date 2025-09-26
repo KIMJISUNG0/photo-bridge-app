@@ -1,435 +1,405 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Photo Bridge LAN – Explorer Edition (Enhanced)</title>
-
-  <!-- 폰트 -->
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Uncial+Antiqua&display=swap" rel="stylesheet" />
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Photo Bridge LAN — LAN-only Mode</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Uncial+Antiqua&display=swap" rel="stylesheet">
   <style>
-    :root{
-      /* 정글 테마 팔레트 */
-      --gold:#95d47a; --gold-soft:#c9ef9e; --parch:#eaf5e8; --ink:#06130e; --panel1:#123624; --panel2:#0c261a;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; background: radial-gradient(1200px 800px at 50% 20%, #0b281f 0%, #091e18 40%, #06130e 100%);
-      color:var(--parch); font-family:'Uncial Antiqua', serif; text-align:center; min-height:100vh;
-      display:flex; flex-direction:column; align-items:center; gap:10px; overflow-x:hidden;
-    }
-    header{width:100%; position:sticky; top:0; z-index:3; backdrop-filter:saturate(1.2) blur(4px)}
-    h1{ font-family:'Cinzel',serif; font-size:2.2rem; margin:10px 0; color:var(--gold-soft); text-shadow:2px 2px 6px #000; position:relative }
-    h1::after{ content:"🔥"; position:absolute; right:-40px; animation:flicker 1s infinite alternate }
-    @keyframes flicker{0%{opacity:.6; transform:scale(1) rotate(0)}100%{opacity:1; transform:scale(1.2) rotate(10deg)}}
-
-    .bar{ width:min(1100px,95%); display:grid; grid-template-columns:1fr auto auto auto; gap:8px; align-items:center; margin:6px auto }
-    .status{ font-family:'Cinzel',serif; font-size:.95rem; opacity:.9; text-align:left }
-    .pill{ padding:8px 12px; border:2px solid var(--gold); border-radius:999px; background:linear-gradient(145deg,var(--panel1),var(--panel2)); color:var(--parch); cursor:pointer }
-
-    .wrap{ width:min(1100px,95%); display:grid; grid-template-columns:320px 1fr; gap:12px }
-    @media (max-width:900px){ .wrap{ grid-template-columns:1fr } }
-
-    .panel{ background:linear-gradient(145deg,var(--panel1),var(--panel2)); border:2px solid var(--gold); border-radius:12px; box-shadow:0 3px 10px rgba(0,0,0,.5); padding:12px }
-    .panel h2{ font-family:'Cinzel',serif; margin:6px 0 10px; font-size:1.2rem; color:var(--gold-soft) }
-
-    .device-list{ display:flex; flex-direction:column; gap:8px; max-height:360px; overflow:auto; padding-right:4px }
-    .device-card, button{ background:linear-gradient(145deg,var(--panel1),var(--panel2)); border:2px solid var(--gold); border-radius:8px; color:var(--parch); font-family:'Cinzel',serif; padding:10px 14px; cursor:pointer; box-shadow:0 3px 6px rgba(0,0,0,.6); transition:transform .15s, filter .2s }
-    .device-card:hover, button:hover{ transform:translateY(-1px); filter:brightness(1.06) }
-
-    .drop{ border:2px dashed var(--gold); border-radius:10px; padding:18px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center }
-    input[type="file"]{ display:none }
-    .file-cta{ display:inline-flex; align-items:center; gap:8px }
-
-    .queue{ display:flex; flex-direction:column; gap:10px; max-height:280px; overflow:auto }
-    .item{ display:grid; grid-template-columns: 1fr 80px; gap:8px; align-items:center }
-    .name{ text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-    progress{ width:100%; height:12px }
-
-    #gallery{ display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px }
-    #gallery img, #gallery .filebox{ width:100%; aspect-ratio:4/3; object-fit:cover; border:3px solid var(--gold); border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.7) }
-    .filebox{ display:flex; align-items:center; justify-content:center; padding:8px; background:rgba(0,0,0,.25) }
-
-    .overlay{ position:fixed; inset:0; background:url('https://i.ibb.co/7QpKsCX/jungle-overlay.png') repeat; opacity:.06; pointer-events:none }
-    .campfire{ position:fixed; bottom:16px; left:50%; transform:translateX(-50%); font-size:1.9rem; animation:fire .8s infinite alternate }
-    @keyframes fire{0%{opacity:.7; transform:translateX(-50%) scale(1)}100%{opacity:1; transform:translateX(-50%) scale(1.2)}}
-    .hint{ font-size:.9rem; opacity:.8 }
-    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center }
-
-    /* 픽셀 배경 캔버스 */
-    #pix-bg{ position:fixed; inset:0; z-index:-1; width:100vw; height:100vh; display:block; image-rendering: pixelated; background:#06130e; }
+    :root{ --bg:#071612; --panel:#123624; --accent:#9edc7a; --text:#eaf5e8 }
+    body{ margin:0; font-family:'Uncial Antiqua', serif; background:linear-gradient(180deg,#071612,#05120f); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:12px; }
+    header{ padding:18px; font-family:'Cinzel',serif; font-size:1.6rem; color:var(--accent) }
+    .bar{ width:min(1100px,95%); display:flex; gap:8px; align-items:center; justify-content:space-between}
+    .panel{ width:min(1100px,95%); background:linear-gradient(145deg,#0e3b25,#0a2e1b); border:2px solid var(--accent); border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.6) }
+    .device-card{ display:block; padding:8px 12px; margin:6px 0; background:transparent; border:1px solid rgba(255,255,255,0.03); color:var(--text); border-radius:6px; cursor:pointer; text-align:left }
+    .device-card:hover{ filter:brightness(1.05) }
+    #gallery img{ max-width:200px; border:3px solid var(--accent); border-radius:6px; margin:8px }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .hint{ opacity:.85; font-size:.92rem }
+    progress{ width:160px; height:12px; }
+    .pill{ padding:8px 10px; border-radius:8px; background:linear-gradient(145deg,#114b32,#0b3a26); border:1px solid var(--accent); color:var(--text); cursor:pointer }
+    #log{ font-family:monospace; font-size:12px; max-height:140px; overflow:auto; background:rgba(0,0,0,0.2); padding:8px; border-radius:6px }
   </style>
 </head>
 <body>
-  <canvas id="pix-bg"></canvas>
-  <header>
-    <h1>🛡️ Photo Bridge LAN ⚔️ — Enhanced</h1>
-  </header>
+  <header>Photo Bridge LAN — <strong>LAN-only</strong> mode (same Wi-Fi / hotspot required)</header>
 
-  <div class="bar">
-    <div class="status" id="status">⏳ 신호탄 준비 중…</div>
-    <button id="btnLeave" class="pill" disabled>나가기</button>
-    <button id="btnRefresh" class="pill">주변 탐험가 새로고침</button>
-    <button id="btnRunTests" class="pill">진단 실행</button>
+  <div class="bar" style="width:min(1100px,95%);">
+    <div class="hint" id="status">초기화 대기…</div>
+    <div class="row">
+      <button id="refreshBtn" class="pill">새로고침</button>
+      <button id="leaveBtn" class="pill" disabled>나가기</button>
+    </div>
   </div>
 
-  <div class="wrap">
-    <section class="panel">
-      <h2>🗺️ 근처 탐험가</h2>
-      <div id="deviceList" class="device-list">기기 검색 중…</div>
-    </section>
+  <div class="panel">
+    <h3>근처 기기</h3>
+    <div id="deviceList">검색 중…</div>
+  </div>
 
-    <section class="panel">
-      <h2>📦 전송 상자</h2>
-      <label class="drop" id="drop">
-        <div class="file-cta">
-          <span>📂 파일 선택</span>
-          <input type="file" id="fileInput" multiple />
-        </div>
-        <div class="hint">또는 파일을 끌어다 놓기 / 붙여넣기(Ctrl/⌘+V)</div>
+  <div class="panel">
+    <h3>파일 전송</h3>
+    <div class="row">
+      <label class="pill" style="cursor:pointer">
+        파일 선택 <input id="fileInput" type="file" style="display:none" />
       </label>
-
-      <div class="queue" id="queue"></div>
-
-      <div class="row" style="margin-top:10px">
-        <button id="btnSend" disabled>🚀 전송 시작</button>
-        <button id="btnClear">🧹 대기열 비우기</button>
-      </div>
-    </section>
+      <button id="sendBtn" class="pill" disabled>전송</button>
+      <button id="clearBtn" class="pill">대기열 비우기</button>
+      <button id="speedTestBtn" class="pill">속도테스트(5MB)</button>
+    </div>
+    <div id="queue" style="margin-top:10px"></div>
   </div>
 
-  <section class="panel" style="width:min(1100px,95%); margin:8px auto 20px">
-    <h2>🏞️ 받은 파일 / 미리보기</h2>
+  <div class="panel">
+    <h3>받은 파일 / 미리보기</h3>
     <div id="gallery"></div>
-  </section>
+  </div>
 
-  <div class="overlay"></div>
-  <div class="campfire">🔥</div>
+  <div class="panel" style="width:min(1100px,95%);">
+    <h3>디버그 로그</h3>
+    <div id="log"></div>
+  </div>
 
-  <!-- Socket.IO 로더: 동일 오리진 시도 후 CDN(폴백) -->
+  <!-- Socket.IO loader: try local then CDN -->
   <script>
-    window.__ioReady = (async function ensureSocketIO(){
-      const hasIo = () => typeof window.io === 'function' || typeof window.io === 'object';
+    window.__ioReady = (async function(){
+      const hasIo = ()=> typeof window.io === 'function' || typeof window.io === 'object';
       function load(src){
-        return new Promise(resolve=>{
-          const s = document.createElement('script');
-          s.src = src; s.async = true; s.crossOrigin = 'anonymous';
-          s.onload = ()=>resolve(true);
-          s.onerror = ()=>resolve(false);
-          document.head.appendChild(s);
+        return new Promise(res=>{
+          const s=document.createElement('script');
+          s.src=src; s.async=true; s.crossOrigin='anonymous';
+          s.onload=()=>res(true); s.onerror=()=>res(false); document.head.appendChild(s);
         });
       }
-      if (hasIo()) return true;
-      let ok = await load('/socket.io/socket.io.js');      // 1) 로컬
-      if (hasIo()) return true;
-      if (!ok) ok = await load('https://cdn.socket.io/4.7.5/socket.io.min.js'); // 2) CDN
+      if(hasIo()) return true;
+      let ok = await load('/socket.io/socket.io.js'); if(hasIo()) return true;
+      if(!ok) ok = await load('https://cdn.socket.io/4.7.5/socket.io.min.js');
       return hasIo();
     })();
   </script>
 
-  <!-- 앱 로직 -->
   <script>
   (async function(){
-    const $ = sel => document.querySelector(sel);
-    const statusEl = $('#status');
-    const deviceListEl = $('#deviceList');
-    const queueEl = $('#queue');
-    const galleryEl = $('#gallery');
-    const leaveBtn = $('#btnLeave');
-    const refreshBtn = $('#btnRefresh');
-    const drop = $('#drop');
-    const input = $('#fileInput');
-    const sendBtn = $('#btnSend');
-    const clearBtn = $('#btnClear');
-
-    // runtime flags
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const MAX_CHUNK = isSafari ? 12 * 1024 : 64 * 1024;
-    const LOW_WATER = 512 * 1024;
-
-    const myName = `Device-${Math.floor(Math.random()*1000)}-${Date.now()}`;
-    let socket, peer, channel, role, currentRoom;
-
-    const queue = [];
-    const sleep = ms => new Promise(r=>setTimeout(r, ms));
-    function setStatus(txt){ statusEl.textContent = txt }
-    const toHuman = n => { const u=['B','KB','MB','GB']; let i=0,x=n; while(x>1024&&i<u.length-1){x/=1024;i++} return `${x.toFixed(i?1:0)} ${u[i]}` };
-    async function sha256(buf){ const dg=await crypto.subtle.digest('SHA-256', buf); return [...new Uint8Array(dg)].map(b=>b.toString(16).padStart(2,'0')).join('') }
-
-    // Socket.IO 준비 대기
+    // wait socket.io
     await (window.__ioReady || Promise.resolve(false));
-    if (!window.io) {
-      setStatus('⚠️ Socket.IO 클라이언트 로드 실패 (경로/네트워크 확인)');
-      console.error('Socket.IO client failed to load.');
-      return;
-    }
 
-    // ───────── 파일 큐/미리보기
-    function addToQueue(file){
-      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2,8)}`;
-      const row = document.createElement('div'); row.className='item'; row.id = `row-${id}`;
-      row.innerHTML = `
-        <div>
-          <div class="name">${file.name} <span style="opacity:.7">(${toHuman(file.size)})</span></div>
-          <progress id="pg-${id}" max="100" value="0"></progress>
-        </div>
-        <div class="hint" id="st-${id}">대기</div>`;
-      queueEl.appendChild(row);
-      queue.push({id, file, row});
-      sendBtn.disabled = !queue.length;
-    }
-    function clearQueue(){ queue.length=0; queueEl.innerHTML=''; sendBtn.disabled=true }
-    function showPreview(file){
-      if(file.type.startsWith('image/')){
-        const url = URL.createObjectURL(file); const img = new Image(); img.src=url; img.onload=()=>URL.revokeObjectURL(url);
-        galleryEl.prepend(img);
-      } else {
-        const box = document.createElement('a'); box.className='filebox'; box.download=file.name;
-        box.href = URL.createObjectURL(file);
-        box.textContent = `⬇️ ${file.name} (${toHuman(file.size)})`;
-        galleryEl.prepend(box);
-      }
-    }
+    // small logger
+    const $ = s => document.querySelector(s);
+    const logEl = $('#log');
+    function log(...args){ console.log(...args); if(logEl) logEl.innerText += args.map(a=> (typeof a==='string'?a:JSON.stringify(a))).join(' ') + '\n'; logEl.scrollTop = 1e9; }
 
-    // ───────── 시그널링
+    const statusEl = $('#status'), deviceListEl = $('#deviceList'), queueEl = $('#queue'), galleryEl = $('#gallery');
+    const fileInput = $('#fileInput'), sendBtn = $('#sendBtn'), clearBtn = $('#clearBtn'), refreshBtn = $('#refreshBtn');
+    const leaveBtn = $('#leaveBtn'), speedTestBtn = $('#speedTestBtn');
+
+    // Networking / transport tuning
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    let MAX_CHUNK = isSafari ? 64*1024 : 256*1024; // initial suggestion; may be tuned
+    let LOW_WATER = 2 * 1024 * 1024; // bufferedAmountLowThreshold
+
+    const myName = `Device-${Math.floor(Math.random()*9000)+1000}-${Date.now()}`;
+    let socket = null, peer = null, channel = null, role = null, currentRoom = null;
+    const queue = [];
+
+    function setStatus(s){ if(statusEl) statusEl.textContent = s; log('[STATUS]', s); }
+
+    // =========== Signaling (simple) ===========
     function initSocket(){
-      try{
-        socket = io({ transports:["websocket","polling"] });
-      }catch(e){
-        setStatus('⚠️ Socket.IO 초기화 에러: '+e.message); return;
-      }
+      if(!window.io){ setStatus('Socket.IO 클라이언트 없음'); return; }
+      socket = io({ transports:['websocket','polling'] });
 
-      socket.on('connect', ()=>{
-        setStatus(`🔌 신호 연결됨 • 내 표식: ${myName}`);
-        socket.emit('announce', myName);
-      });
-
+      socket.on('connect', ()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce', myName); });
       socket.on('deviceList', list=>{
-        deviceListEl.innerHTML='';
-        const others = list.filter(d=>d.name!==myName);
-        if(!others.length){
-          deviceListEl.innerHTML = '<div style="opacity:.7">🌍 주변 탐험가 없음. 다른 기기에서 같은 주소를 열어주세요.</div>';
-          return;
-        }
-        for(const d of others){
-          const btn = document.createElement('button'); btn.className='device-card'; btn.type='button';
-          btn.textContent = `🗺️ ${d.name}`;
-          btn.onclick = ()=> socket.emit('request', {from:myName, to:d.name});
+        deviceListEl.innerHTML = '';
+        const others = list.filter(x=> x.name !== myName);
+        if(!others.length){ deviceListEl.innerHTML = '<div class="hint">주변 탐험가 없음</div>'; return; }
+        others.forEach(d=>{
+          const btn = document.createElement('button');
+          btn.className = 'device-card';
+          btn.textContent = d.name;
+          btn.onclick = ()=> socket.emit('request', { from: myName, to: d.name });
           deviceListEl.appendChild(btn);
-        }
+        });
       });
 
       socket.on('request', ({from})=>{
-        if(confirm(`⚔️ ${from} 탐험가가 연결을 요청했습니다. 수락할까요?`)){
-          socket.emit('accept',{from:myName, to:from});
-        }
+        if(confirm(`${from}에서 연결 요청`)) socket.emit('accept',{ from: myName, to: from });
       });
 
-      socket.on('pair', ({roomId, role:r})=>{
-        currentRoom=roomId; role=r; socket.emit('join', roomId);
-        initPeer().then(()=>{ if(role==='offerer') makeOffer() });
+      // pair: server assigns room + roles
+      socket.on('pair', ({roomId, role: r})=>{
+        log('[SIGNAL] pair', roomId, r);
+        currentRoom = roomId; role = r;
+        socket.emit('join', roomId);
+        initPeer().then(()=>{ if(role === 'offerer') makeOffer(); });
       });
 
-      socket.on('offer', async offer=>{
-        await peer.setRemoteDescription(new RTCSessionDescription(offer));
+      // offer/answer exchanged as-is
+      socket.on('offer', async (offer) => {
+        log('[SIGNAL] offer received');
+        await peer.setRemoteDescription(offer);
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
-        socket.emit('answer',{roomId:currentRoom, answer});
+        socket.emit('answer', { roomId: currentRoom, answer });
+      });
+      socket.on('answer', async (answer) => {
+        log('[SIGNAL] answer received');
+        await peer.setRemoteDescription(answer);
       });
 
-      socket.on('answer', async answer=>{
-        await peer.setRemoteDescription(new RTCSessionDescription(answer));
-      });
-
-      socket.on('candidate', async cand=>{
-        try{ await peer.addIceCandidate(new RTCIceCandidate(cand)) }catch(e){ console.warn('ICE add error', e) }
+      // candidate messages: server forwards { roomId, candidate }
+      socket.on('candidate', async ({ candidate }) => {
+        if(!candidate) return;
+        const s = candidate.candidate || '';
+        // **LAN-only accept**: only add host candidates
+        if(s.includes(' typ host ') || s.includes(' typ host')){
+          try { await peer.addIceCandidate(new RTCIceCandidate(candidate)); log('[ICE] host candidate added'); }
+          catch(e){ log('[ICE] add error', e); }
+        } else {
+          log('[ICE] ignored non-host candidate');
+        }
       });
 
       refreshBtn.onclick = ()=> socket.emit('announce', myName);
     }
 
+    // =========== Peer setup (LAN-only) ===========
     async function initPeer(){
-      if(peer) try{ peer.close() }catch{}
+      if(peer) try{ peer.close(); }catch(e){}
+
+      // IMPORTANT: no STUN/TURN -> only host candidates (if available)
       peer = new RTCPeerConnection({
-        iceServers:[{urls:'stun:stun.l.google.com:19302'}],
-        sdpSemantics:'unified-plan'
+        iceServers: [],   // empty prevents srflx/relay generation
+        sdpSemantics: 'unified-plan'
       });
 
-      peer.onicecandidate = e=>{
-        if(e.candidate) socket.emit('candidate', {roomId:currentRoom, candidate:e.candidate});
-      };
-      peer.onconnectionstatechange = ()=>{
-        setStatus(`🛰️ P2P 상태: ${peer.connectionState}`);
-        leaveBtn.disabled = !(peer.connectionState==='connected');
+      peer.onicecandidate = (e) => {
+        if(!e.candidate || !e.candidate.candidate) return;
+        const s = e.candidate.candidate;
+        // forward only host candidates
+        if(s.includes(' typ host ') || s.includes(' typ host')){
+          socket.emit('candidate', { roomId: currentRoom, candidate: e.candidate });
+          log('[ICE] forwarded host candidate');
+        } else {
+          log('[ICE] skipped non-host candidate (not forwarded)');
+        }
       };
 
-      if(role==='offerer'){
-        channel = peer.createDataChannel('fileChannel',{ordered:true});
+      peer.onconnectionstatechange = ()=> {
+        setStatus('P2P 상태: ' + peer.connectionState);
+        leaveBtn.disabled = !['disconnected','failed','closed'].includes(peer.connectionState);
+      };
+
+      // optional: inspect candidate-pair stats when connected
+      peer.oniceconnectionstatechange = async ()=>{
+        log('[ICE] state', peer.iceConnectionState);
+        if(peer.iceConnectionState === 'connected' || peer.iceConnectionState === 'completed'){
+          try{
+            const stats = await peer.getStats();
+            stats.forEach(r=>{
+              if(r.type === 'candidate-pair' && r.state === 'succeeded' && r.selected){
+                log('[STATS] selected candidate-pair', r);
+              }
+            });
+          }catch(e){ log('[STATS] getStats error', e); }
+        }
+      };
+
+      if(role === 'offerer'){
+        channel = peer.createDataChannel('fileChannel', { ordered: true });
         setupChannel(channel);
       } else {
-        peer.ondatachannel = e=> setupChannel(e.channel);
+        peer.ondatachannel = (ev) => { channel = ev.channel; setupChannel(channel); };
       }
     }
 
     async function makeOffer(){
-      const offer = await peer.createOffer({offerToReceiveAudio:false, offerToReceiveVideo:false});
+      const offer = await peer.createOffer({ offerToReceiveAudio:false, offerToReceiveVideo:false });
       await peer.setLocalDescription(offer);
-      socket.emit('offer',{roomId:currentRoom, offer});
+      socket.emit('offer', { roomId: currentRoom, offer });
+      log('[SIGNAL] sent offer');
     }
 
     function setupChannel(ch){
-      channel = ch; channel.binaryType='arraybuffer';
-      channel.bufferedAmountLowThreshold = LOW_WATER;
-      channel.onopen  = ()=>{ setStatus('📡 데이터 채널 연결됨'); sendBtn.disabled = !queue.length };
-      channel.onclose = ()=> setStatus('⌛ 데이터 채널 종료');
-      channel.onerror = err => setStatus('⚠️ 채널 오류: '+err.message);
+      channel = ch;
+      channel.binaryType = 'arraybuffer';
+
+      // tune thresholds after open
+      channel.onopen = async () => {
+        try{
+          // try to derive reasonable chunk size from SCTP if available
+          const sctp = peer.sctp;
+          if(sctp && sctp.maxMessageSize){
+            MAX_CHUNK = Math.min(sctp.maxMessageSize, isSafari ? 128*1024 : 256*1024);
+            log('[CHANNEL] maxMessageSize', sctp.maxMessageSize, '-> MAX_CHUNK', MAX_CHUNK);
+          } else {
+            log('[CHANNEL] sctp not available, using MAX_CHUNK', MAX_CHUNK);
+          }
+        }catch(e){ log('[CHANNEL] tuning error', e); }
+        // allow larger in-flight bytes
+        try{ channel.bufferedAmountLowThreshold = LOW_WATER; }catch(e){}
+        setStatus('데이터채널 열림');
+        sendBtn.disabled = queue.length === 0;
+      };
+
+      channel.onclose = ()=> setStatus('데이터채널 닫힘');
+      channel.onerror = (e)=> log('[CHANNEL] error', e);
       channel.onmessage = onData;
     }
 
-    // ───────── 수신 프로토콜
-    let rxCtx = null; // {name,size,type,lastModified,received,parts,hash}
+    // =========== Protocol: control frames (text) + binary chunks ===========
+    // control messages are small JSON strings; binary messages are chunk ArrayBuffers
+    let rxCtx = null;
+
     async function onData(e){
       if(typeof e.data === 'string'){
         const msg = JSON.parse(e.data);
-        if(msg.t==='file'){
-          rxCtx = {name:msg.name, size:msg.size, type:msg.type||'application/octet-stream', lastModified:msg.lastModified||Date.now(), received:0, parts:[], hash:msg.hash};
-          setStatus(`⬇️ 수신 중: ${msg.name} (${toHuman(msg.size)})`);
+        if(msg.t === 'hello'){ channel.send(JSON.stringify({ t:'ack' })); return; }
+        if(msg.t === 'file'){
+          rxCtx = { name: msg.name, size: msg.size, type: msg.type || 'application/octet-stream', lastModified: msg.lastModified || Date.now(), parts: [], received: 0, hash: msg.hash };
+          setStatus(`수신 시작: ${msg.name} (${(msg.size/1024/1024).toFixed(2)} MB)`);
           return;
         }
-        if(msg.t==='eof'){
-          const blob = new Blob(rxCtx.parts, {type:rxCtx.type});
-          if(blob.size !== rxCtx.size){ channel.send(JSON.stringify({t:'err', why:'size_mismatch'})); return; }
+        if(msg.t === 'eof'){
+          const blob = new Blob(rxCtx.parts, { type: rxCtx.type });
+          if(blob.size !== rxCtx.size){ log('size mismatch'); channel.send(JSON.stringify({ t:'err', why:'size_mismatch' })); rxCtx = null; return; }
           if(rxCtx.hash){
-            const buf = await blob.arrayBuffer(); const digest = await sha256(buf);
-            if(digest!==rxCtx.hash){ channel.send(JSON.stringify({t:'err', why:'hash_mismatch'})); return; }
+            const buf = await blob.arrayBuffer(); const digest = await crypto.subtle.digest('SHA-256', buf);
+            // hex
+            const hex = [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+            if(hex !== rxCtx.hash){ log('hash mismatch'); channel.send(JSON.stringify({ t:'err', why:'hash_mismatch' })); rxCtx = null; return; }
           }
-          const file = new File([blob], rxCtx.name, {type:rxCtx.type, lastModified:rxCtx.lastModified});
-          showPreview(file);
-          setStatus(`✅ 수신 완료: ${rxCtx.name}`);
-          rxCtx=null; channel.send(JSON.stringify({t:'ack'}));
+          const f = new File([blob], rxCtx.name, { type: rxCtx.type, lastModified: rxCtx.lastModified });
+          showPreview(f);
+          setStatus(`수신 완료: ${rxCtx.name}`);
+          channel.send(JSON.stringify({ t:'ack' }));
+          rxCtx = null;
           return;
         }
-        if(msg.t==='err'){ setStatus('⚠️ 상대 오류: '+(msg.why||'')); return; }
+        if(msg.t === 'err'){ log('peer err', msg.why); setStatus('상대 오류: ' + msg.why); return; }
+        return;
+      }
+
+      // binary chunk (maybe bench or file chunk)
+      if(rxCtx && rxCtx.bench){
+        rxCtx.bytes += e.data.byteLength;
         return;
       }
       if(rxCtx){ rxCtx.parts.push(e.data); rxCtx.received += e.data.byteLength; }
     }
 
-    // ───────── 전송 파이프라인 (다중 파일 + 해시 + backpressure)
+    // =========== send pipeline ===========
     async function sendQueue(){
-      if(!channel || channel.readyState!=='open') return alert('연결이 아직 준비되지 않았습니다.');
+      if(!channel || channel.readyState !== 'open'){ alert('데이터채널 준비되지 않음'); return; }
       sendBtn.disabled = true;
-      for(const item of queue){ await sendOne(item).catch(console.error) }
+      for(const item of queue){ try{ await sendOne(item); }catch(e){ log('send error', e); } }
       clearQueue();
     }
-    async function sendOne({id, file}){
+
+    async function sendOne({ id, file }){
       const pg = document.getElementById(`pg-${id}`);
       const st = document.getElementById(`st-${id}`);
-      st.textContent='해시 계산 중…';
+      st.textContent = '해시 계산 중…';
       const buf = await file.arrayBuffer();
-      const hash = await sha256(buf);
+      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      const hashHex = [...new Uint8Array(hashBuf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 
-      st.textContent='전송 준비…';
-      channel.send(JSON.stringify({t:'file', name:file.name, size:file.size, type:file.type, lastModified:file.lastModified, hash}));
-      await sleep(10);
+      st.textContent = '전송 시작…';
+      channel.send(JSON.stringify({ t:'file', name: file.name, size: file.size, type: file.type, lastModified: file.lastModified, hash: hashHex }));
+      await new Promise(r=>setTimeout(r, 10));
 
       const view = new Uint8Array(buf);
       let sent = 0;
       while(sent < view.length){
-        const chunk = view.subarray(sent, Math.min(sent+MAX_CHUNK, view.length));
+        const chunk = view.subarray(sent, Math.min(sent + MAX_CHUNK, view.length));
+        // backpressure
         if(channel.bufferedAmount > channel.bufferedAmountLowThreshold){
           await new Promise(res=>{
-            const onLow = ()=>{ channel.removeEventListener('bufferedamountlow', onLow); res() };
-            channel.addEventListener('bufferedamountlow', onLow, {once:true});
+            const onLow = ()=>{ channel.removeEventListener('bufferedamountlow', onLow); res(); };
+            channel.addEventListener('bufferedamountlow', onLow, { once:true });
           });
         }
         channel.send(chunk);
         sent += chunk.length;
-        pg.value = Math.round((sent / view.length) * 100);
-        st.textContent = `${toHuman(sent)} / ${toHuman(view.length)}`;
+        if(pg) pg.value = Math.round((sent / view.length) * 100);
+        if(st) st.textContent = `${(sent/1024/1024).toFixed(2)} MB / ${(view.length/1024/1024).toFixed(2)} MB`;
       }
-      channel.send(JSON.stringify({t:'eof'}));
+      channel.send(JSON.stringify({ t:'eof' }));
 
-      // ACK 대기
-      await new Promise((resolve,reject)=>{
+      // wait for ack
+      await new Promise((resolve, reject) => {
         const timer = setTimeout(()=>reject(new Error('ACK timeout')), 15000);
-        const onMsg = ev=>{
-          if(typeof ev.data==='string'){
-            try{
-              const m = JSON.parse(ev.data);
-              if(m.t==='ack'){ clearTimeout(timer); channel.removeEventListener('message', onMsg); st.textContent='완료'; resolve(); }
-            }catch{}
+        const onMsg = (ev) => {
+          if(typeof ev.data === 'string'){
+            try{ const m = JSON.parse(ev.data); if(m.t === 'ack'){ clearTimeout(timer); channel.removeEventListener('message', onMsg); st.textContent = '완료'; resolve(); } }catch(e){}
           }
         };
         channel.addEventListener('message', onMsg);
-      }).catch(err=>{ st.textContent='에러'; channel.send(JSON.stringify({t:'err', why:err.message})) });
+      }).catch(err=>{ st.textContent = '에러'; channel.send(JSON.stringify({ t:'err', why: err.message })); });
     }
 
-    // ───────── UI 바인딩
-    input.addEventListener('change', e=>{ [...e.target.files].forEach(addToQueue) });
-    ['dragenter','dragover'].forEach(t=> drop.addEventListener(t, e=>{ e.preventDefault(); drop.style.background='rgba(0,0,0,.15)'}));
-    ['dragleave','drop'].forEach(t=> drop.addEventListener(t, e=>{ e.preventDefault(); drop.style.background='transparent'}));
-    drop.addEventListener('drop', e=>{ const files=[...e.dataTransfer.files]; files.forEach(addToQueue) });
-    window.addEventListener('paste', (e)=>{ const items = e.clipboardData?.items || []; for(const it of items){ if(it.kind==='file'){ const f=it.getAsFile(); if(f) addToQueue(f) } } });
+    // =========== UI helpers ===========
+    function addToQueue(file){
+      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2,8)}`;
+      const row = document.createElement('div'); row.className='row'; row.id = `row-${id}`;
+      row.innerHTML = `<div style="min-width:240px">${file.name} <small style="opacity:.7">(${(file.size/1024/1024).toFixed(2)}MB)</small></div>
+        <progress id="pg-${id}" max="100" value="0"></progress>
+        <div id="st-${id}" class="hint" style="width:180px">대기</div>`;
+      queueEl.appendChild(row);
+      queue.push({ id, file, row });
+      sendBtn.disabled = !channel || channel.readyState !== 'open' ? true : false;
+    }
+    function clearQueue(){ queue.length = 0; queueEl.innerHTML = ''; sendBtn.disabled = true; }
+    function showPreview(file){
+      if(file.type.startsWith('image/')){ const u = URL.createObjectURL(file); const img = new Image(); img.src = u; img.onload=()=>URL.revokeObjectURL(u); galleryEl.prepend(img); }
+      else { const a = document.createElement('a'); a.className='hint'; a.download = file.name; a.href = URL.createObjectURL(file); a.textContent = `⬇ ${file.name}`; galleryEl.prepend(a); }
+    }
 
-    sendBtn.onclick = sendQueue;
-    clearBtn.onclick = clearQueue;
-    leaveBtn.onclick = ()=>{ try{ peer?.close() }catch{}; setStatus('🧭 항해 종료'); leaveBtn.disabled=true };
+    // file input
+    fileInput.addEventListener('change', e => { [...e.target.files].forEach(addToQueue); });
 
-    // 시작!
-    initSocket();
+    // drag/drop support
+    ['dragenter','dragover'].forEach(ev=>{ document.addEventListener(ev, e=>{ e.preventDefault(); }); });
+    ['dragleave','drop'].forEach(ev=>{ document.addEventListener(ev, e=>{ e.preventDefault(); }); });
+    document.addEventListener('drop', e=>{ if(e.dataTransfer) [...e.dataTransfer.files].forEach(addToQueue); });
+
+    sendBtn.onclick = sendQueue; clearBtn.onclick = clearQueue;
+    leaveBtn.onclick = ()=>{ try{ peer?.close(); }catch(e){}; setStatus('나감'); leaveBtn.disabled = true; };
+
+    // speed test: 5MB bench
+    speedTestBtn.onclick = async ()=>{
+      if(!channel || channel.readyState !== 'open'){ alert('채널 미오픈'); return; }
+      const size = 5 * 1024 * 1024;
+      const buf = new Uint8Array(size); for(let i=0;i<size;i+=4096) buf[i] = i&255;
+      channel.send(JSON.stringify({ t:'file', name:'__bench.bin', size, type:'application/octet-stream', lastModified:Date.now(), hash:'' }));
+      const start = performance.now();
+      for(let off=0; off<buf.length; off += MAX_CHUNK){
+        const chunk = buf.subarray(off, Math.min(off + MAX_CHUNK, buf.length));
+        if(channel.bufferedAmount > channel.bufferedAmountLowThreshold){
+          await new Promise(res=>{
+            const onLow = ()=>{ channel.removeEventListener('bufferedamountlow', onLow); res(); };
+            channel.addEventListener('bufferedamountlow', onLow, { once:true });
+          });
+        }
+        channel.send(chunk);
+      }
+      channel.send(JSON.stringify({ t:'eof' }));
+      // wait bench ack
+      await new Promise(resolve=>{
+        const onMsg = (ev) => { if(typeof ev.data === 'string') { try{ const m = JSON.parse(ev.data); if(m.t === 'ack'){ channel.removeEventListener('message', onMsg); resolve(); } }catch(e){} } };
+        channel.addEventListener('message', onMsg);
+      });
+      const dt = (performance.now() - start)/1000;
+      alert(`대략 ${(5/dt).toFixed(2)} MB/s (elapsed ${dt.toFixed(2)}s)`);
+    };
+
+    // finally init signaling
+    if(window.io) initSocket();
+    else setStatus('Socket.IO 로더 실패 — 콘솔 확인');
+
+    // expose some helper on window for debugging
+    window._pb = { peer: ()=>peer, channel: ()=>channel, myName };
   })();
-  </script>
-
-  <!-- 픽셀 GIF 느낌의 정글/강 배경 (슬로우 줌/크로스페이드) -->
-  <script>
-  (function(){
-    const cvs = document.getElementById('pix-bg');
-    const ctx = cvs.getContext('2d', { alpha:false });
-    ctx.imageSmoothingEnabled = false;
-    const DPR = Math.min(2, window.devicePixelRatio || 1);
-    function resize(){ cvs.width=Math.floor(innerWidth*DPR); cvs.height=Math.floor(innerHeight*DPR); cvs.style.width='100vw'; cvs.style.height='100vh'; }
-    addEventListener('resize', resize); addEventListener('orientationchange', resize); resize();
-
-    const IDS = ['G49iOoR--Ic','aOPZT1Zb7pM','2_wtTlznXu0','q9T1sdjDvd4','PwlwbdF0R3U','34WvUw8QKF8'];
-    const IMGS = IDS.map(id=>`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1920&q=80`);
-    const pool = [];
-    function loadAll(urls){ return Promise.all(urls.map(src=>new Promise(r=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>r(im); im.onerror=()=>r(null); im.src=src; })))}
-    function drawPixelBuffer(img, sx, sy, sw, sh, ow, oh){
-      const off=document.createElement('canvas'); off.width=ow; off.height=oh; const ox=off.getContext('2d'); ox.imageSmoothingEnabled=false;
-      ox.drawImage(img, sx, sy, sw, sh, 0, 0, ow, oh);
-      ox.globalCompositeOperation='soft-light'; ox.fillStyle='rgba(24,60,40,.18)'; ox.fillRect(0,0,ow,oh); ox.globalCompositeOperation='source-over';
-      return off;
-    }
-    function drawPixelated(img, t, zFrom=1.02, zTo=1.12, panX=0.5, panY=0.5){
-      const W=cvs.width, H=cvs.height, z=zFrom+(zTo-zFrom)*t, iw=img.naturalWidth, ih=img.naturalHeight, aspect=W/H;
-      let cw=iw/z, ch=cw/aspect; if(ch>ih/z){ ch=ih/z; cw=ch*aspect; }
-      const sx=Math.max(0, Math.min(iw-cw, (iw-cw)*panX)), sy=Math.max(0, Math.min(ih-ch, (ih-ch)*panY));
-      const px=Math.max(6, Math.floor(Math.min(W,H)/140)), ow=Math.max(64, Math.floor(W/px)), oh=Math.max(48, Math.floor(H/px));
-      const off=drawPixelBuffer(img, sx, sy, cw, ch, ow, oh); ctx.clearRect(0,0,W,H); ctx.drawImage(off, 0, 0, W, H);
-    }
-    const ease=(t)=> t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
-    let start=performance.now(); const DUR=16000, XFADE=2200;
-    function tick(now){
-      if(!pool.length){ requestAnimationFrame(tick); return }
-      const W=cvs.width, H=cvs.height, elapsed=now-start, slide=Math.floor(elapsed/DUR), rel=(elapsed%DUR)/DUR;
-      const cur=pool[slide%pool.length], nxt=pool[(slide+1)%pool.length], t=ease(Math.min(1,rel));
-      drawPixelated(cur, t, 1.02, 1.10, 0.45, 0.55);
-      const xfStart=1-(XFADE/DUR);
-      if(rel>xfStart){ const ft=(rel-xfStart)/(1-xfStart); ctx.globalAlpha=ft; drawPixelated(nxt, 1-ft, 1.03, 1.12, 0.55, 0.45); ctx.globalAlpha=1; }
-      const grains=Math.floor((W*H)/(DPR*DPR*50000)); for(let i=0;i<grains;i++){ const x=(Math.random()*W)|0, y=(Math.random()*H)|0; ctx.fillStyle=Math.random()<0.5?'rgba(180,220,160,0.08)':'rgba(0,0,0,0.06)'; ctx.fillRect(x,y, DPR, DPR); }
-      requestAnimationFrame(tick);
-    }
-    loadAll(IMGS).then(list=>{ list.filter(Boolean).forEach(im=>pool.push(im)); if(!pool.length){ ctx.fillStyle='#0f2a1c'; ctx.fillRect(0,0,cvs.width,cvs.height); return; } requestAnimationFrame(tick); });
-  })();
-  </script>
-
-  <!-- SW 등록(선택) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
-    }
   </script>
 </body>
 </html>
