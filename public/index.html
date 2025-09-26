@@ -291,7 +291,15 @@
     window.addEventListener('paste', e=>{ const items=e.clipboardData?.items||[]; for(const it of items){ if(it.kind==='file'){ const f=it.getAsFile(); if(f) addToQueue(f) } } });
 
     // ==== Signaling
-    function initSocket(){ if(!window.io){setStatus('Socket.IO 미존재'); return} socket=io({transports:['websocket','polling']}); socket.on('connect',()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce',myName) }); socket.on('deviceList', list=>{ deviceListEl.innerHTML=''; const others=list.filter(x=>x.name!==myName); if(!others.length){ deviceListEl.innerHTML=`<div class="hint" data-i18n="no_peers">주변 탐험가 없음</div>`; window.__i18n?.apply(); return } others.forEach(d=>{ const b=document.createElement('button'); b.className='device-card'; b.innerHTML=`<span class="ico">🧭</span><span>${d.name}</span><span class="badge">LAN</span>`; b.onclick=()=>socket.emit('request',{from:myName,to:d.name}); deviceListEl.appendChild(b) }) }); socket.on('request',({from})=>{ if(confirm(`${from} ${window.__i18n?.dict?.[window.__i18n.pick()]?.req_confirm||'requests to connect'}`)) socket.emit('accept',{from:myName,to:from}) }); socket.on('pair', ({roomId,role:r})=>{ currentRoom=roomId; role=r; socket.emit('join',roomId); initPeer().then(()=>{ if(role==='offerer') makeOffer() }) }); socket.on('offer', async offer=>{ await peer.setRemoteDescription(offer); const answer=await peer.createAnswer(); await peer.setLocalDescription(answer); socket.emit('answer',{roomId:currentRoom,answer}) }); socket.on('answer', async answer=>{ await peer.setRemoteDescription(answer) }); socket.on('candidate', async ({candidate})=>{ if(!candidate) return; const s=candidate.candidate||''; if(s.includes(' typ host')){ try{ await peer.addIceCandidate(new RTCIceCandidate(candidate)); log('[ICE] host candidate added') }catch(e){ log('[ICE] add error',e) } } else { log('[ICE] ignored non-host') } }); refreshBtn.onclick=()=>socket.emit('announce',myName) }
+    function initSocket(){ if(!window.io){setStatus('Socket.IO 미존재'); return} socket=io({transports:['websocket','polling']}); socket.on('connect',()=>{ setStatus(`신호 연결됨 — ${myName}`); socket.emit('announce',myName) }); socket.on('deviceList', list=>{ deviceListEl.innerHTML=''; const others=list.filter(x=>x.name!==myName); if(!others.length){ deviceListEl.innerHTML=`<div class="hint" data-i18n="no_peers">주변 탐험가 없음</div>`; window.__i18n?.apply(); return } others.forEach(d=>{ const b=document.createElement('button'); b.className='device-card'; b.innerHTML=`<span class="ico">🧭</span><span>${d.name}</span><span class="badge">LAN</span>`; b.onclick=()=>socket.emit('request',{from:myName,to:d.name}); deviceListEl.appendChild(b) }) }); socket.on('request',({from})=>{ if(confirm(`${from} ${window.__i18n?.dict?.[window.__i18n.pick()]?.req_confirm||'requests to connect'}`)) socket.emit('accept',{from:myName,to:from}) }); socket.on('pair', ({roomId,role:r})=>{ currentRoom=roomId; role=r; socket.emit('join',roomId); initPeer().then(()=>{ if(role==='offerer') makeOffer() }) }); socket.on('offer', async offer=>{ await peer.setRemoteDescription(offer); const answer=await peer.createAnswer(); await peer.setLocalDescription(answer); socket.emit('answer',{roomId:currentRoom,answer}) }); socket.on('answer', async answer=>{ await peer.setRemoteDescription(answer) });
+      // === candidate 포맷 방어: 래핑/비래핑 모두 수용
+      socket.on('candidate', async (payload)=>{
+        const cand = payload?.candidate ?? payload; // {candidate} 또는 cand 객체 자체
+        if(!cand || !cand.candidate) return; const s=cand.candidate||'';
+        if(s.includes(' typ host')){ try{ await peer.addIceCandidate(new RTCIceCandidate(cand)); log('[ICE] host candidate added') }catch(e){ log('[ICE] add error',e) } }
+        else { log('[ICE] ignored non-host') }
+      });
+      refreshBtn.onclick=()=>socket.emit('announce',myName) }
 
     // ==== Peer (LAN-only)
     async function initPeer(){ if(peer) try{peer.close()}catch{}; peer=new RTCPeerConnection({ iceServers:[], sdpSemantics:'unified-plan' }); peer.onicecandidate=e=>{ if(!e.candidate||!e.candidate.candidate) return; const s=e.candidate.candidate; if(s.includes(' typ host')){ socket.emit('candidate',{roomId:currentRoom,candidate:e.candidate}); log('[ICE] forwarded host candidate') } else { log('[ICE] skip non-host') } }; peer.onconnectionstatechange=()=>{ setStatus('P2P: '+peer.connectionState); leaveBtn.disabled=!['disconnected','failed','closed'].includes(peer.connectionState) }; peer.oniceconnectionstatechange=async()=>{ if(peer.iceConnectionState==='connected'||peer.iceConnectionState==='completed'){ try{ const st=await peer.getStats(); st.forEach(r=>{ if(r.type==='candidate-pair' && r.state==='succeeded' && r.selected){ log('[STATS] pair',r) } }) }catch(e){} } }; if(role==='offerer'){ channel=peer.createDataChannel('fileChannel',{ordered:true}); setupChannel(channel) } else { peer.ondatachannel=e=>{ channel=e.channel; setupChannel(channel) } } }
@@ -300,13 +308,16 @@
     // ==== Resumable protocol state (receiver)
     let rx=null; // {id,name,size,type,lastModified,chunkSize,total,received:Set}
 
-    function setupChannel(ch){ channel=ch; channel.binaryType='arraybuffer'; channel.onopen=async()=>{ try{ const sctp=peer.sctp; if(sctp&&sctp.maxMessageSize){ MAX_CHUNK=Math.min(sctp.maxMessageSize,isSafari?128*1024:256*1024) } }catch{} try{ channel.bufferedAmountLowThreshold=LOW_WATER }catch{} setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_open||'DataChannel opened'); sendBtn.disabled=queue.length===0 };
+    function setupChannel(ch){ channel=ch; channel.binaryType='arraybuffer'; channel.onopen=async()=>{ try{ const sctp=peer.sctp; if(sctp&&sctp.maxMessageSize){ MAX_CHUNK=Math.min(sctp.maxMessageSize,isSafari?128*1024:256*1024) } }catch{} try{ channel.bufferedAmountLowThreshold=LOW_WATER }catch{} setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_open||'DataChannel opened');
+        // 핸드셰이크 안정화: hello 먼저 교환
+        try{ channel.send(JSON.stringify({t:'hello'})) }catch{}
+        sendBtn.disabled=queue.length===0 };
       channel.onclose=()=>setStatus(window.__i18n?.dict?.[window.__i18n.pick()]?.dc_close||'DataChannel closed'); channel.onerror=e=>log('[CHANNEL] error',e); channel.onmessage=onMsg }
 
     // ---- handle incoming control/data
     async function onMsg(e){
       if(typeof e.data==='string'){
-        const m=JSON.parse(e.data);
+        let m; try{ m=JSON.parse(e.data) }catch{ return }
         if(m.t==='hello'){ channel.send(JSON.stringify({t:'ack'})); return }
         if(m.t==='file'){
           rx={ id:m.id, name:m.name, size:m.size, type:m.type||'application/octet-stream', lastModified:m.lastModified||Date.now(), chunkSize:m.chunkSize||MAX_CHUNK, total:m.total, received:new Set() };
@@ -316,8 +327,9 @@
           channel.send(JSON.stringify({t:'resume_status', id:rx.id, missing}));
           return;
         }
-        if(m.t==='chunk'){ rx._expect = m.i; return; }
+        if(m.t==='chunk'){ if(!rx){ channel.send(JSON.stringify({t:'err', id:m.id, why:'no_meta'})); return } rx._expect = m.i; return; }
         if(m.t==='eof'){
+          if(!rx){ channel.send(JSON.stringify({t:'err', id:m.id, why:'no_meta'})); return }
           const have=await chunksById(rx.id, rx.total); const missing=[]; for(let i=0;i<rx.total;i++){ if(!have.has(i)) missing.push(i) }
           if(missing.length){ channel.send(JSON.stringify({t:'need', id:rx.id, missing})); setStatus(`누락 ${missing.length}개 재요청`) }
           else { const blob=await assemble(rx.id, rx.total, rx.type); const file=new File([blob], rx.name,{type:rx.type,lastModified:rx.lastModified}); showPreview(file); setStatus(`수신 완료: ${rx.name}`); channel.send(JSON.stringify({t:'ack', id:rx.id})); rx=null; }
@@ -330,7 +342,9 @@
         }
         return;
       }
-      if(rx && typeof rx._expect==='number'){
+      // binary without rx: 방어적으로 무시하고 메타 재요청
+      if(!rx){ try{ channel.send(JSON.stringify({t:'err', why:'no_meta'})) }catch{} return }
+      if(typeof rx._expect==='number'){
         const i=rx._expect; await chunkPut(rx.id, i, e.data); rx.received.add(i); rx._expect=undefined; return;
       }
     }
@@ -341,9 +355,11 @@
     async function sendOne({id,file}){
       const pg=$(`#pg-${id}`), sp=$(`#sp-${id}`), sp2=$(`#sp2-${id}`);
       const buf=new Uint8Array(await file.arrayBuffer()); const total=Math.ceil(buf.length/MAX_CHUNK); const fileId=`${file.name}-${file.size}-${file.lastModified}`;
+      // hello를 먼저 보낸 뒤 메타 알림
+      try{ channel.send(JSON.stringify({t:'hello'})) }catch{}
       channel.send(JSON.stringify({t:'file', id:fileId, name:file.name, size:file.size, type:file.type, lastModified:file.lastModified, chunkSize:MAX_CHUNK, total}));
       let missing=null;
-      try{ missing=await new Promise(res=>{ const to=setTimeout(()=>res('all'),1200); const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='resume_status' && m.id===fileId){ channel.removeEventListener('message', onMsg); clearTimeout(to); res(m.missing) } }catch{} } }; channel.addEventListener('message', onMsg) }); }catch{}
+      try{ missing=await new Promise(res=>{ const to=setTimeout(()=>res('all'),3000); const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='resume_status' && m.id===fileId){ channel.removeEventListener('message', onMsg); clearTimeout(to); res(m.missing) } }catch{} } }; channel.addEventListener('message', onMsg) }); }catch{}
       let plan=[]; if(missing==='all' || !Array.isArray(missing)) plan=Array.from({length:total},(_,i)=>i); else plan=missing;
       let sent = total - plan.length; if(pg) pg.value = Math.round((sent/total)*100);
 
@@ -364,6 +380,10 @@
       channel.send(JSON.stringify({t:'eof', id:fileId}));
       await new Promise((resolve)=>{
         const onMsg=async ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack' && m.id===fileId){ channel.removeEventListener('message', onMsg); resolve() } else if(m.t==='need' && m.id===fileId){ const list=m.missing||[]; for(const i of list){ const start=i*MAX_CHUNK, end=Math.min(start+MAX_CHUNK, buf.length); const chunk=buf.subarray(start,end); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id:fileId, i})); channel.send(chunk); } channel.send(JSON.stringify({t:'eof', id:fileId})); }
+            else if(m.t==='err' && m.why==='no_meta' && (!m.id || m.id===fileId)){
+              // 수신측이 메타를 못받았다고 함 → 메타 재송
+              channel.send(JSON.stringify({t:'file', id:fileId, name:file.name, size:file.size, type:file.type, lastModified:file.lastModified, chunkSize:MAX_CHUNK, total}));
+            }
           }catch{}
         } };
         channel.addEventListener('message', onMsg);
@@ -376,7 +396,7 @@
     sendBtn.onclick=sendQueue; clearBtn.onclick=clearQueue; leaveBtn.onclick=()=>{ try{peer?.close()}catch{}; setStatus('나감'); leaveBtn.disabled=true };
 
     // speed test 5MB
-    speedBtn.onclick=async()=>{ if(!channel||channel.readyState!=='open') return alert('채널 미오픈'); const size=5*1024*1024; const buf=new Uint8Array(size); for(let i=0;i<size;i+=4096) buf[i]=i&255; const total=Math.ceil(size/MAX_CHUNK); const id='__bench'; const start=performance.now(); channel.send(JSON.stringify({t:'bench', size})); for(let i=0;i<total;i++){ const off=i*MAX_CHUNK; const chunk=buf.subarray(off, Math.min(off+MAX_CHUNK,size)); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id, i})); channel.send(chunk) } channel.send(JSON.stringify({t:'eof', id})); await new Promise(res=>{ const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack'&&m.id===id){ channel.removeEventListener('message', onMsg); res() } }catch{} } }; channel.addEventListener('message', onMsg) }); const dt=(performance.now()-start)/1000; alert(`${(5/dt).toFixed(2)} MB/s`) };
+    speedBtn.onclick=async()=>{ if(!channel||channel.readyState!=='open') return alert('채널 미오픈'); const size=5*1024*1024; const buf=new Uint8Array(size); for(let i=0;i<size;i+=4096) buf[i]=i&255; const total=Math.ceil(size/MAX_CHUNK); const id='__bench'; const start=performance.now(); try{ channel.send(JSON.stringify({t:'hello'})) }catch{}; channel.send(JSON.stringify({t:'bench', size})); for(let i=0;i<total;i++){ const off=i*MAX_CHUNK; const chunk=buf.subarray(off, Math.min(off+MAX_CHUNK,size)); if(channel.bufferedAmount>channel.bufferedAmountLowThreshold){ await new Promise(r=>{ const onLow=()=>{ channel.removeEventListener('bufferedamountlow', onLow); r() }; channel.addEventListener('bufferedamountlow', onLow, {once:true}) }) } channel.send(JSON.stringify({t:'chunk', id, i})); channel.send(chunk) } channel.send(JSON.stringify({t:'eof', id})); await new Promise(res=>{ const onMsg=ev=>{ if(typeof ev.data==='string'){ try{ const m=JSON.parse(ev.data); if(m.t==='ack'&&m.id===id){ channel.removeEventListener('message', onMsg); res() } }catch{} } }; channel.addEventListener('message', onMsg) }); const dt=(performance.now()-start)/1000; alert(`${(5/dt).toFixed(2)} MB/s`) };
 
     // start
     function init(){ if(window.io) initSocket(); else setStatus('Socket.IO 로더 실패'); }
