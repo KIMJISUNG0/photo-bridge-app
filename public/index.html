@@ -2,54 +2,157 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Photo Bridge LAN</title>
+  <title>Photo Bridge LAN - Explorer Edition</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- 중세풍/탐험 느낌 폰트 -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+
   <style>
-    body { background:#1c1c1c; color:#eee; font-family:sans-serif; text-align:center; }
-    .device-card { background:#333; padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
-    img { max-width:200px; margin:5px; }
+    body {
+      margin: 0;
+      background: #1a0f08 url('https://www.transparenttextures.com/patterns/aged-paper.png');
+      color: #f5e6c5;
+      font-family: 'Uncial Antiqua', serif;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2.5em;
+      margin: 20px 0;
+      color: #e0c97f;
+      text-shadow: 2px 2px 6px #000;
+      position: relative;
+    }
+
+    /* 불꽃 애니메이션 */
+    h1::after {
+      content: "🔥";
+      position: absolute;
+      right: -40px;
+      animation: flicker 1s infinite alternate;
+    }
+    @keyframes flicker {
+      0% { opacity: 0.6; transform: scale(1) rotate(0deg); }
+      100% { opacity: 1; transform: scale(1.2) rotate(10deg); }
+    }
+
+    .device-card, button {
+      background: linear-gradient(145deg, #5a3e1b, #3b2912);
+      border: 2px solid #c9a34e;
+      border-radius: 8px;
+      color: #f5e6c5;
+      font-family: 'Cinzel', serif;
+      padding: 10px 20px;
+      margin: 8px;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.6);
+      transition: transform 0.2s, background 0.3s;
+    }
+
+    .device-card:hover, button:hover {
+      background: linear-gradient(145deg, #6d4a22, #4a3417);
+      transform: scale(1.05);
+    }
+
+    input[type="file"] {
+      margin: 15px;
+      color: #f5e6c5;
+    }
+
+    #gallery img {
+      max-width: 200px;
+      margin: 10px;
+      border: 3px solid #c9a34e;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.7);
+    }
+
+    /* 배경에 탐험 느낌 오버레이 */
+    .overlay {
+      position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: url('https://i.ibb.co/7QpKsCX/jungle-overlay.png') repeat;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+
+    /* 모닥불 효과 */
+    .campfire {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2em;
+      animation: fire 0.8s infinite alternate;
+    }
+    @keyframes fire {
+      0% { opacity: 0.7; transform: translateX(-50%) scale(1); }
+      100% { opacity: 1; transform: translateX(-50%) scale(1.2); }
+    }
   </style>
 </head>
 <body>
-  <h1>📡 Photo Bridge LAN</h1>
+  <h1>🛡️ Photo Bridge LAN ⚔️</h1>
   <div id="deviceList">기기 검색 중...</div>
   <input type="file" id="fileInput" multiple />
   <button onclick="sendFiles()">전송하기</button>
   <div id="gallery"></div>
 
+  <div class="overlay"></div>
+  <div class="campfire">🔥</div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    const socket = io({ transports: ["websocket", "polling"] });
     const myName = "Device-" + Math.floor(Math.random()*1000) + "-" + Date.now();
-    socket.emit('announce', myName);
+    socket.on('connect', () => {
+      console.log("🔌 connected", socket.id);
+      socket.emit('announce', myName);
+    });
 
-    let currentRoom = null;
-    let peer, channel, role;
+    let currentRoom = null, role = null, peer = null, channel = null;
 
     // 기기 목록 표시
     socket.on('deviceList', list => {
       const container = document.getElementById('deviceList');
       container.innerHTML = '';
-      list.forEach(d => {
-        if (d.name !== myName) {
-          const card = document.createElement('div');
-          card.className = 'device-card';
-          card.innerText = d.name;
-          card.onclick = () => socket.emit('request', { from: myName, to: d.name });
-          container.appendChild(card);
-        }
+      const others = list.filter(d => d.name !== myName);
+      if (!others.length) {
+        container.innerHTML = '<div style="opacity:.7">🌍 주변 탐험가 없음. 다른 기기에서 같은 주소를 열어주세요.</div>';
+        return;
+      }
+      others.forEach(d => {
+        const card = document.createElement('button');
+        card.className = 'device-card';
+        card.type = 'button';
+        card.textContent = "🗺️ " + d.name;
+        card.onclick = () => {
+          console.log("➡️ Sending request to", d.name);
+          socket.emit('request', { from: myName, to: d.name });
+        };
+        container.appendChild(card);
       });
     });
 
     // 연결 요청 받음
     socket.on('request', ({ from }) => {
-      if (confirm(`${from} 기기에서 연결 요청이 왔습니다. 수락할까요?`)) {
+      console.log("📨 request from", from);
+      if (confirm(`⚔️ ${from} 탐험가가 연결을 요청했습니다. 수락할까요?`)) {
         socket.emit('accept', { from: myName, to: from });
       }
     });
 
     // 페어링
     socket.on('pair', ({ roomId, role: r }) => {
+      console.log("📡 Pair event received:", roomId, r);
       currentRoom = roomId;
       role = r;
       socket.emit('join', roomId);
@@ -68,7 +171,7 @@
       };
 
       if (role === 'offerer') {
-        channel = peer.createDataChannel("fileChannel");
+        channel = peer.createDataChannel("fileChannel", { ordered: true });
         setupChannel(channel);
       } else {
         peer.ondatachannel = e => setupChannel(e.channel);
@@ -78,12 +181,14 @@
     function setupChannel(ch) {
       channel = ch;
       channel.binaryType = "arraybuffer";
-      channel.onopen = () => console.log("📡 DataChannel opened");
+      channel.onopen = () => console.log("📡 DataChannel opened", channel.readyState);
+      channel.onclose = () => console.log("⌛ DataChannel closed");
+      channel.onerror = err => console.error("⚠️ DataChannel error", err);
       channel.onmessage = e => receiveFile(e.data);
     }
 
     async function makeOffer() {
-      const offer = await peer.createOffer();
+      const offer = await peer.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
       await peer.setLocalDescription(offer);
       socket.emit('offer', { roomId: currentRoom, offer });
     }
@@ -102,34 +207,17 @@
     socket.on('candidate', async candidate => {
       try {
         await peer.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("✅ ICE candidate added");
       } catch (err) {
-        console.warn("ICE candidate error", err);
+        console.warn("⚠️ ICE candidate error", err);
       }
     });
 
     // 파일 전송
     function sendFiles() {
       const files = document.getElementById('fileInput').files;
-      if (!files.length || !channel || channel.readyState !== "open") {
-        alert("연결이 아직 준비되지 않았습니다.");
-        return;
-      }
+      if (!files.length) return alert("📂 파일을 선택하세요.");
+      if (!channel || channel.readyState !== "open") return alert("연결이 아직 준비되지 않았습니다.");
       const file = files[0];
       file.arrayBuffer().then(buf => {
         channel.send(buf);
-        console.log("📤 Sent file:", file.name);
-      });
-    }
-
-    // 파일 수신
-    function receiveFile(data) {
-      const blob = new Blob([data]);
-      const url = URL.createObjectURL(blob);
-      const img = document.createElement('img');
-      img.src = url;
-      document.getElementById('gallery').appendChild(img);
-      console.log("📥 Received file");
-    }
-  </script>
-</body>
-</html>
